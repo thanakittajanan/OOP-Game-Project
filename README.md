@@ -1,6 +1,63 @@
 <<<<<<< HEAD
 # Polymorphic Cat
 
+A 2D platformer game built with Java and libGDX, inspired by *Cats are Liquid*. Designed as an Object-Oriented Programming (OOP) course project demonstrating modular design, state patterns, and physics interactions.
+
+---
+
+## Project Overview
+
+**Polymorphic Cat** is a 2D puzzle-platformer where players control a morphing cat navigating through challenging obstacles, traps, and platforming puzzles. The core mechanic revolves around switching between different physical states to alter movement speeds, jump physics, and collision bounds.
+
+---
+
+##  Tech Stack & Tools
+
+* **Language:** Java (JDK 17)
+* **Framework:** libGDX 1.14.2
+* **Build Tool:** Gradle
+* **Level Design:** Tiled Map Editor (`.tmx`)
+* **Version Control:** Git & GitHub
+
+---
+
+##  Team Division
+
+### Member 1: Physics & Movement（pete)
+1. Player input handling (A/D movement, Space bar jump).
+ 2.Gravity calculations and velocity handling.
+ 3.Terrain AABB collision detection and wall-stick prevention.
+
+### Member 2: Level & Map System(shiro)
+ 1.Parsing Tiled `.tmx` maps using `TmxMapLoader`.
+ 2.Rendering level environments via `OrthogonalTiledMapRenderer`.
+ 3.Camera tracking and object layer hazard processing (`Spike`, `Portal`).
+
+###  Member 3: Systems, Abilities & UI (Joseph - Lead)
+1.Base project structure initialization, Gradle setup, and Git workflow.
+2.Core State Pattern for cat form morphing (Liquid form / Solid form).
+3.Health system implementation (`takeDamage`), invincibility frames, and death logic.
+4.Screen navigation (`GameScreen`) and HUD UI drawing.
+
+---
+
+##  Completed Setup
+
+- [x] Base libGDX desktop project initialized.
+- [x] Abstract base class `GameObject.java` defined.
+- [x] Player subclass `Player.java` created with basic interface signatures (`takeDamage`, `getPosition`, `getHealth`).
+- [x] Basic game rendering loop (`GameScreen.java`) configured.
+- [x] Git repository set up with main and feature branches.
+
+---
+
+## Code Naming Conventions
+
+Classes: `PascalCase` (e.g., `GameObject`, `Player`)
+Methods / Variables: `camelCase` (e.g., `takeDamage()`, `currentHealth`)
+Constants:`UPPER_SNAKE_CASE` (e.g., `MAX_HEALTH`, `GRAVITY`)
+Package Path: `com.Group6.mygame`
+
 A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
 
 This project was generated with a template including simple application launchers and a main class extending `Game` that sets the first screen.
