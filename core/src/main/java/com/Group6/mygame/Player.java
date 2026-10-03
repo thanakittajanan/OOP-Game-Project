@@ -11,8 +11,13 @@ public class Player extends GameObject {
     private final Sprite catSprite;
     private final Texture pStandTexture, pWalk1Texture, pWalk2Texture, pUpwardTexture, pDownwardTexture,
         ozflow1Texture, ozflow2Texture, ozflow3Texture;
+    private float airSpeed = 200f;
 
     //Cat attribute
+    // Run
+    private float runTimer = 0;
+    private final float runFrameTime = 0.12f;
+
     // Crouch
     private float crouchTimer = 0;
     private final float crouchFrameTime = 0.12f;   // how long ozflow1 shows before ozflow2
@@ -57,11 +62,26 @@ public class Player extends GameObject {
         // Member 1: change position.x / position.y here (keyboard movement, gravity)
         delta = Gdx.graphics.getDeltaTime();
         boolean crouching = onGround && Gdx.input.isKeyPressed(Input.Keys.S);
-        float speed = crouching ? 80f : 200f; // if crouching is true, speed is 80; otherwise it's 200." It's the same as:
+        boolean running = onGround && Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT);
+        float speed;
+
         boolean moving = false;
 
 
+        // Speed setup
+        if(running && !crouching) {
+            speed = 400f;
+        }
+        else if(crouching && !running) {
+            speed = 80f;
+        }
+        else  {
+            speed = 200f;
+        }
+
         // =================== Left/Right Section ===================== //
+        if (!onGround) speed = airSpeed;     // keep takeoff speed in the air
+
         if (Gdx.input.isKeyPressed(Input.Keys.D)) {
             position.x += speed * delta;
             moving = true;
@@ -73,8 +93,9 @@ public class Player extends GameObject {
         }
 
         // ================= Jump Section =================== //
-        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) && onGround && !crouching) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.W) && onGround) {
             velocityY = jumpSpeed;
+            airSpeed = speed;        // 400 if running, 200 if walking, 80 if crouching
             onGround = false;
         }
         // Reduce VelocityY and PositionY
@@ -97,6 +118,14 @@ public class Player extends GameObject {
             // ozflow1 first, then hold ozflow2 while S stays down
             catSprite.setTexture(crouchTimer < crouchFrameTime ? ozflow1Texture : ozflow2Texture);
             catSprite.setTexture(useFirstFrame ? ozflow1Texture : ozflow2Texture);
+        } else if (running) {
+            runTimer += delta;
+            animTimer += delta;
+            boolean useFirstFrame = ((int) (animTimer / (frameTime - 0.5f) )) % 2 == 0;
+            // ozflow1 first, then hold ozflow2 while S stays down
+//
+            catSprite.setTexture(useFirstFrame ? pUpwardTexture : pDownwardTexture);
+
         } else if (!onGround && velocityY > 0) {
             catSprite.setTexture(pUpwardTexture);
         } else if (!onGround && velocityY < 0) {
