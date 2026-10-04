@@ -19,7 +19,7 @@ public class FirstScreen implements Screen {
     @Override
     public void show() {
         batch = new SpriteBatch();
-        viewport = new FitViewport(640, 480);
+        viewport = new FitViewport(Main.WORLD_WIDTH, Main.WORLD_HEIGHT);
         player = new Player(1, 1,
             game.physicalCatStandTexture,
             game.physicalCatWalk1Texture,
