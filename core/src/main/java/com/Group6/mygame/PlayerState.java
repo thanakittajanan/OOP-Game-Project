@@ -13,6 +13,9 @@ package com.Group6.mygame;
  *       ↑   ↘ walked off ledge        │ velocity.y &lt;= 0
  *       │       ↘                     ↓
  *       └──────── landed ──────── FallingState
+ *
+ *    GroundedState / FallingState ── hold or release S ──→ MorphState ──→ GroundedState / FallingState
+ *                                          ↑_______________(no input is read)______│
  * </pre>
  */
 public interface PlayerState {

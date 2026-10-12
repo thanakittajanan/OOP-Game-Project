@@ -100,12 +100,15 @@ public class LevelWorld implements Disposable {
     }
 
     /**
-     * The liquid cat passes through bars and grates. Until Member 3's Liquid form exists, crouching (S)
-     * counts as liquid. While the cat is still inside bars it stays "liquid", so it never gets stuck.
+     * Bars and grates only stop the solid cat; the liquid form flows through them.
+     *
+     * <p>The second half is a safety net, not a gameplay rule: a cat that is <em>already</em>
+     * overlapping a bar keeps counting as liquid for as long as it is in there. Without it, a cat that
+     * released S inside a grate would set back into a 90 px cat embedded in a wall.
      */
     private boolean isLiquid() {
-        // TODO(Member 3): replace isCrouching() with the real form check, e.g. player.getForm() instanceof LiquidForm
-        return player.isCrouching() || overlapsAny(player.getBounds(), map.getLiquidPassables());
+        return player.getForm().passesBars()
+            || overlapsAny(player.getBounds(), map.getLiquidPassables());
     }
 
     private void rebuildSolids() {
