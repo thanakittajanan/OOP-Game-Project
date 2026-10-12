@@ -166,3 +166,4 @@ Thumbs.db
 ## Working dirs (not part of the game)
 /.asset_dl/
 /.sprite_tmp/
+/art-source/
