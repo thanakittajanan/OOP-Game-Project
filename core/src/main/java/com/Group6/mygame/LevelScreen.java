@@ -1,40 +1,95 @@
 package com.Group6.mygame;
 
+import com.Group6.mygame.level.LevelData;
+import com.Group6.mygame.level.LevelMap;
+import com.Group6.mygame.level.LevelWorld;
+import com.Group6.mygame.level.Monster;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 
-/** Placeholder level screen: level background image + playable cat. Traps/terrain come later. */
+/**
+ * Plays one level (1, 2 or 3). The levels themselves are written in {@code level/LevelData.java}.
+ *
+ * <p>Two cameras: the world camera scrolls sideways to follow the cat; the UI stage (back button, HUD)
+ * stays fixed on screen. Draw order: background image → tiles → traps and monsters → cat → UI.
+ *
+ * <p>Press F3 to show the debug view (solid boxes, bars, hitboxes).
+ */
 public class LevelScreen extends BaseScreen {
-    private static final boolean DEBUG = true;   // draws the solids + the cat's green hitbox
+    public static final int LEVEL_COUNT = LevelData.LEVEL_COUNT;
+    private static final float END_DELAY = 1.6f;        // seconds the "cleared" / "game over" message shows
+    private static final float CAMERA_LOOK_AHEAD = 0f;
 
-    private final Texture backgroundTexture;
+    private static boolean debug = false;
+
+    private final int levelNumber;
+    private Texture backgroundTexture;
     private Player player;
+    private LevelWorld world;
 
-    // Step 2: everything the cat can collide with (Member 2's map loader will fill this later)
-    private final Array<Rectangle> solids = new Array<>();
+    private OrthographicCamera camera;
+    private FitViewport worldViewport;
+    private SpriteBatch batch;
     private ShapeRenderer shapes;
 
-    public LevelScreen(Main game, Texture backgroundTexture) {
+    private Label hudLabel;
+    private Label messageLabel;
+    private float endTimer;
+
+    public LevelScreen(Main game, int levelNumber) {
         super(game);
-        this.backgroundTexture = backgroundTexture;
+        this.levelNumber = Math.max(1, Math.min(LEVEL_COUNT, levelNumber));
     }
 
     @Override
     protected void buildUi() {
-        addCoverBackground(backgroundTexture);
+        backgroundTexture = new Texture("Level_" + levelNumber + ".jpg");
+        backgroundTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
+        camera = new OrthographicCamera();
+        worldViewport = new FitViewport(Main.WORLD_WIDTH, Main.WORLD_HEIGHT, camera);
+        batch = new SpriteBatch();
         shapes = new ShapeRenderer();
-        buildTestLevel();
 
-        // Draw order: background, then the cat, then the UI (back button).
-        player = game.createPlayer(200f, 200f); // spawns a bit above the floor so it drops in
-        player.setSolids(solids);               // the cat collides with everything in this list
-        stage.addActor(new PlayerActor(player));
+        player = game.createPlayer(0f, 0f);       // LevelWorld moves it to the map's spawn point
+        world = new LevelWorld(levelNumber, player);
+
+        // HUD: level name and HP, top-right
+        Table hud = new Table();
+        hud.setFillParent(true);
+        hud.top().right().pad(28f);
+        hudLabel = new Label("", skin);
+        hud.add(hudLabel);
+        stage.addActor(hud);
+
+        // big centre message: "Checkpoint", "Level cleared!", "Game over"
+        Table centre = new Table();
+        centre.setFillParent(true);
+        centre.top().padTop(180f);
+        messageLabel = new Label("", skin, "title");
+        messageLabel.setAlignment(Align.center);
+        centre.add(messageLabel);
+        stage.addActor(centre);
+
+        // controls reminder, bottom
+        Table help = new Table();
+        help.setFillParent(true);
+        help.bottom().padBottom(18f);
+        help.add(new Label("A / D move    W jump, hold on vines to climb    S crouch = liquid (bars, grates, low gaps)"
+            + "    Shift run    F3 debug    Esc back", skin, "roster"));
+        stage.addActor(help);
 
         addBackButton(new Runnable() {
             @Override
@@ -42,7 +97,6 @@ public class LevelScreen extends BaseScreen {
                 backToLevelSelect();
             }
         });
-
         addKeyboardShortcuts(null, new Runnable() {
             @Override
             public void run() {
@@ -51,62 +105,101 @@ public class LevelScreen extends BaseScreen {
         });
     }
 
-    /** Temporary test blocks (world is 1920 x 1080, y goes UP, (0,0) is bottom-left). */
-    private void buildTestLevel() {
-        solids.clear();
-        solids.add(new Rectangle(0, 0, Main.WORLD_WIDTH, 100));   // floor: its top edge is at y = 100
-        solids.add(new Rectangle(700, 200, 300, 30));             // platform: cat (90 tall) fits under it, jump under it to bump the head
-
-        // screen edges: keep the cat inside the world
-        solids.add(new Rectangle(-100, 0, 100, Main.WORLD_HEIGHT));                    // left wall
-        solids.add(new Rectangle(Main.WORLD_WIDTH, 0, 100, Main.WORLD_HEIGHT));        // right wall
-
-        // staircase: three steps of 10 px each (the cat climbs steps up to 12 px without jumping)
-        solids.add(new Rectangle(1050, 100, 60, 10));
-        solids.add(new Rectangle(1110, 100, 60, 20));
-        solids.add(new Rectangle(1170, 100, 60, 30));
-
-        // low ceiling: 70 px gap, so the standing cat (90) does NOT fit but the crouching cat (55) does
-        solids.add(new Rectangle(1330, 170, 250, 30));
-
-        // tall wall: run into it at full speed, the cat must stop cleanly and not stick
-        solids.add(new Rectangle(1750, 100, 40, 400));
-    }
-
     @Override
     public void render(float delta) {
-        super.render(delta);                       // background, cat, UI
-        if (!DEBUG || shapes == null) return;
+        world.update(delta);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) debug = !debug;
+        if (handleLevelEnd(delta)) return;        // switched screen: this one is disposed now
 
-        shapes.setProjectionMatrix(stage.getViewport().getCamera().combined);
+        followCat();
 
-        // draw solid blocks
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
-        shapes.setColor(Color.GRAY);
-        for (int i = 0; i < solids.size; i++) {    // indexed loop: libGDX Array iterators can't be nested
-            Rectangle s = solids.get(i);
-            shapes.rect(s.x, s.y, s.width, s.height);
+        ScreenUtils.clear(0.02f, 0.03f, 0.08f, 1f);
+        worldViewport.apply();
+        batch.setProjectionMatrix(camera.combined);
+
+        // 1. background fills the view and moves with the camera
+        float left = camera.position.x - Main.WORLD_WIDTH / 2f;
+        float bottom = camera.position.y - Main.WORLD_HEIGHT / 2f;
+        batch.setColor(Color.WHITE);
+        batch.begin();
+        batch.draw(backgroundTexture, left, bottom, Main.WORLD_WIDTH, Main.WORLD_HEIGHT);
+
+        // 2. tiles, then 3. traps, monsters, cat
+        world.renderTiles(batch, left, left + Main.WORLD_WIDTH);
+        world.renderBehindCat(batch);
+        world.renderCat(batch);
+        batch.end();
+
+        if (debug) drawDebug();
+
+        // 4. UI
+        hudLabel.setText(world.getMap().getTitle() + "   |   Level " + levelNumber + " / " + LEVEL_COUNT
+            + "   |   HP " + Math.max(0, player.getHealth()));
+        messageLabel.setText(world.getMessage());
+        stage.getViewport().apply();
+        stage.act(delta);
+        stage.draw();
+    }
+
+    /** Camera follows the cat sideways and stops at the map edges. The map is 16 tiles (1024 px) tall. */
+    private void followCat() {
+        LevelMap map = world.getMap();
+        Rectangle cat = player.getBounds();
+        float halfW = Main.WORLD_WIDTH / 2f;
+        float target = cat.x + cat.width / 2f + CAMERA_LOOK_AHEAD;
+        float x = Math.max(halfW, Math.min(map.getWidth() - halfW, target));
+        camera.position.set(Math.round(x), Main.WORLD_HEIGHT / 2f, 0f);   // whole pixels: no gaps between tiles
+        camera.update();
+    }
+
+    /** After a short message, go to the next level, back to the level list, or restart after a game over. */
+    private boolean handleLevelEnd(float delta) {
+        if (world.getStatus() == LevelWorld.Status.PLAYING) return false;
+        endTimer += delta;
+        if (endTimer < END_DELAY) return false;
+
+        if (world.getStatus() == LevelWorld.Status.DEAD) {
+            switchTo(new LevelScreen(game, levelNumber));
+        } else if (levelNumber < LEVEL_COUNT) {
+            switchTo(new LevelScreen(game, levelNumber + 1));
+        } else {
+            switchTo(new LevelSelectScreen(game));
         }
-        shapes.end();
+        return true;
+    }
 
-        // draw the cat's hitbox (green outline)
-        Rectangle b = player.getBounds();
+    private void drawDebug() {
+        LevelMap map = world.getMap();
+        shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Line);
+        shapes.setColor(Color.GRAY);
+        drawBoxes(map.getTerrainSolids());
+        shapes.setColor(Color.CYAN);
+        drawBoxes(map.getLiquidPassables());
+        shapes.setColor(Color.YELLOW);
+        drawBoxes(map.getVines());
+        shapes.setColor(Color.RED);
+        for (int i = 0; i < map.getHazards().size; i++) {
+            Rectangle r = map.getHazards().get(i).getBounds();
+            shapes.rect(r.x, r.y, r.width, r.height);
+        }
+        shapes.setColor(Color.ORANGE);
+        for (int i = 0; i < map.getMonsters().size; i++) {
+            Monster m = map.getMonsters().get(i);
+            Rectangle r = m.getHitbox();
+            shapes.rect(r.x, r.y, r.width, r.height);
+        }
         shapes.setColor(Color.GREEN);
+        Rectangle b = player.getBounds();
         shapes.rect(b.x, b.y, b.width, b.height);
         shapes.end();
+    }
 
-        // debug text: current state and speeds
-        BitmapFont font = skin.getFont("default-font");
-        Batch batch = stage.getBatch();
-        batch.setProjectionMatrix(stage.getViewport().getCamera().combined);
-        batch.begin();
-        font.draw(batch, "State: " + player.getStateName()
-            + "   onGround: " + player.isOnGround()
-            + "   crouching: " + player.isCrouching(), 40f, 960f);
-        font.draw(batch, "vx: " + Math.round(player.getVelocity().x)
-            + "   vy: " + Math.round(player.getVelocity().y), 40f, 920f);
-        batch.end();
+    private void drawBoxes(Array<Rectangle> boxes) {
+        for (int i = 0; i < boxes.size; i++) {
+            Rectangle r = boxes.get(i);
+            shapes.rect(r.x, r.y, r.width, r.height);
+        }
     }
 
     private void backToLevelSelect() {
@@ -114,11 +207,18 @@ public class LevelScreen extends BaseScreen {
     }
 
     @Override
+    public void resize(int width, int height) {
+        super.resize(width, height);
+        if (width <= 0 || height <= 0 || worldViewport == null) return;
+        worldViewport.update(width, height, false);
+    }
+
+    @Override
     public void dispose() {
         super.dispose();
-        if (shapes != null) {
-            shapes.dispose();
-            shapes = null;
-        }
+        if (world != null) { world.dispose(); world = null; }
+        if (batch != null) { batch.dispose(); batch = null; }
+        if (shapes != null) { shapes.dispose(); shapes = null; }
+        if (backgroundTexture != null) { backgroundTexture.dispose(); backgroundTexture = null; }
     }
 }
