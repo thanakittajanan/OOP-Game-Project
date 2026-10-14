@@ -36,6 +36,7 @@ public class LevelScreen extends BaseScreen {
     private static boolean debug = false;
 
     private final int levelNumber;
+    private final boolean restoreCheckpoint;   // true after a game over: start from the last flag
     private Texture backgroundTexture;
     private Player player;
     private LevelWorld world;
@@ -54,7 +55,12 @@ public class LevelScreen extends BaseScreen {
     private float endTimer;
 
     public LevelScreen(Main game, int levelNumber) {
+        this(game, levelNumber, false);
+    }
+
+    public LevelScreen(Main game, int levelNumber, boolean restoreCheckpoint) {
         super(game);
+        this.restoreCheckpoint = restoreCheckpoint;
         this.levelNumber = Math.max(1, Math.min(LEVEL_COUNT, levelNumber));
     }
 
@@ -69,7 +75,7 @@ public class LevelScreen extends BaseScreen {
         shapes = new ShapeRenderer();
 
         player = game.createPlayer(0f, 0f);       // LevelWorld moves it to the map's spawn point
-        world = new LevelWorld(levelNumber, player);
+        world = new LevelWorld(levelNumber, player, restoreCheckpoint);
         if (levelNumber == LEVEL_COUNT && !GasProgress.isUnlocked()) {
             world.announce("This level needs the gas form - collect the star at the end of The Furnace");
         }
@@ -205,7 +211,7 @@ public class LevelScreen extends BaseScreen {
         if (endTimer < END_DELAY) return false;
 
         if (world.getStatus() == LevelWorld.Status.DEAD) {
-            switchTo(new LevelScreen(game, levelNumber));
+            switchTo(new LevelScreen(game, levelNumber, true));   // back to the last checkpoint
         } else if (levelNumber < LEVEL_COUNT) {
             switchTo(new LevelScreen(game, levelNumber + 1));
         } else {

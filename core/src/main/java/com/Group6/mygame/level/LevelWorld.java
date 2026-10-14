@@ -54,6 +54,11 @@ public class LevelWorld implements Disposable {
     private float messageTime;
 
     public LevelWorld(int levelNumber, Player player) {
+        this(levelNumber, player, false);
+    }
+
+    /** @param restoreCheckpoint true after a game over: start from the last checkpoint reached */
+    public LevelWorld(int levelNumber, Player player, boolean restoreCheckpoint) {
         this.levelNumber = levelNumber;
         this.player = player;
         this.art = new LevelArt(LevelTheme.forLevel(levelNumber));
@@ -66,6 +71,15 @@ public class LevelWorld implements Disposable {
         checkpointReached = new boolean[map.getCheckpoints().size];
         respawnX = map.getSpawn().x;
         respawnY = map.getSpawn().y;
+        if (restoreCheckpoint && CheckpointSave.has(levelNumber)
+            && CheckpointSave.reached().length == checkpointReached.length) {
+            System.arraycopy(CheckpointSave.reached(), 0, checkpointReached, 0, checkpointReached.length);
+            respawnX = CheckpointSave.x();
+            respawnY = CheckpointSave.y();
+            if (CheckpointSave.valveOpen()) map.openSealedDoors();
+        } else {
+            CheckpointSave.clear();
+        }
         moveCatTo(respawnX, respawnY);
         player.setSolids(activeSolids);   // the same list object is refilled every frame
         player.setFullSolids(catSolids);
@@ -292,6 +306,9 @@ public class LevelWorld implements Disposable {
                     show("The gas is too thin to turn the valve - warm up first");
                 } else {
                     map.openSealedDoors();
+                    if (CheckpointSave.has(levelNumber)) {
+                        CheckpointSave.store(levelNumber, respawnX, respawnY, checkpointReached, true);
+                    }
                     show("Valve opened! The sealed door is gone");
                 }
             }
@@ -305,6 +322,7 @@ public class LevelWorld implements Disposable {
                 checkpointReached[i] = true;
                 respawnX = cps.get(i).x + cps.get(i).width / 2f;
                 respawnY = cps.get(i).y;
+                CheckpointSave.store(levelNumber, respawnX, respawnY, checkpointReached, map.isValveOpen());
                 show("Checkpoint");
             }
         }
