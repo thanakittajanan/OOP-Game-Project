@@ -87,8 +87,9 @@ public class LevelScreen extends BaseScreen {
         Table help = new Table();
         help.setFillParent(true);
         help.bottom().padBottom(18f);
-        help.add(new Label("A / D move    W jump (not as liquid), climb vines    hold S = melt to liquid"
-            + " (bars, grates, low gaps)    Shift run    F3 debug    Esc back", skin, "roster"));
+        help.add(new Label("A / D move    Space jump, climb vines    hold S = lie prone (low gaps)"
+            + "    Q = liquid on/off (bars, grates)    E = gas on/off    Shift run    F3 debug    Esc back",
+            skin, "roster"));
         stage.addActor(help);
 
         addBackButton(new Runnable() {
