@@ -3,7 +3,7 @@ package com.Group6.mygame.level;
 import com.badlogic.gdx.utils.Array;
 
 /**
- * The three levels, written as Java code. Each level is a grid of characters 16 rows tall, plus a list
+ * The four levels, written as Java code. Each level is a grid of characters 16 rows tall, plus a list
  * of placed objects (spawn, checkpoints, exit, monsters, saws, falling spikes).
  *
  * <p>Rows and columns are counted from the TOP-LEFT here, like reading text. {@link LevelMap} turns them
@@ -13,7 +13,12 @@ import com.badlogic.gdx.utils.Array;
  *   #  solid      H  vine (solid, climbable)   |  bars / grate (liquid passes)
  *   ^  spikes     L  fire hole                  F  flame vent (solid base)
  *   ~  crumbling floor                          .  empty
+ *   I  frost pipe (solid, freezes gas)          S  sealed door (blocks even gas, valve opens it)
  * </pre>
+ *
+ * Gas cloud rule of thumb (level 4): a cloud flies through every solid tile, including the floor, so
+ * anything meant to stop it - a frost pipe, a sealed door - must reach all the way down through rows
+ * 14 and 15. {@link #sealed} does that by itself; {@link #frost} is told its rows.
  *
  * Design rules (Member 1's cat: 90 x 90 standing, 90 x 55 crouching, jump about 139 px):
  * a 1-tile gap only fits the crouching / liquid cat; ledges are at most 2 tiles up;
@@ -22,7 +27,7 @@ import com.badlogic.gdx.utils.Array;
 public final class LevelData {
     public static final int ROWS = 16;
     public static final float TILE_SIZE = 64f;
-    public static final int LEVEL_COUNT = 3;
+    public static final int LEVEL_COUNT = 4;
 
     /** Something placed in the level. col/row are the tile just ABOVE the floor it stands on. */
     public static final class Placement {
@@ -31,6 +36,7 @@ public final class LevelData {
         public int tier, range;     // monster
         public int dx, dy;          // saw: travel in tiles (dy positive = down)
         public float period, phase; // saw
+        public int w, h;            // fan: size of the air block in tiles (col,row = its top-left tile)
 
         Placement(String type, int col, int row) {
             this.type = type;
@@ -75,6 +81,12 @@ public final class LevelData {
 
     private void vent(int c) { grid[14][c] = 'F'; }
 
+    /** Frost pipe: solid rock that condenses any gas cloud touching it. */
+    private void frost(int c0, int r0, int c1, int r1) { rect(c0, r0, c1, r1, 'I'); }
+
+    /** Sealed door: blocks the cat and the gas cloud until a valve is opened. */
+    private void sealed(int c0, int r0, int c1, int r1) { rect(c0, r0, c1, r1, 'S'); }
+
     private Placement place(String type, int col, int row) {
         Placement p = new Placement(type, col, row);
         placements.add(p);
@@ -85,6 +97,21 @@ public final class LevelData {
     private void checkpoint(int c, int r) { place("checkpoint", c, r); }
     private void exit(int c, int r) { place("exit", c, r); }
     private void fallingSpike(int c, int r) { place("fallingSpike", c, r); }
+    /** Fire basin that recharges the heat bar; (c, r) is the tile it stands in. */
+    private void brazier(int c, int r) { place("brazier", c, r); }
+    /** The star that unlocks the gas form. */
+    private void star(int c, int r) { place("star", c, r); }
+    /** A valve a warm enough gas cloud can turn to open every sealed door. */
+    private void valve(int c, int r) { place("valve", c, r); }
+
+    /** Wind block, (c, r) is its top-left tile; dx/dy is the direction (-1, 0 or 1). */
+    private void fan(int c, int r, int w, int h, int dx, int dy) {
+        Placement p = place("fan", c, r);
+        p.w = w;
+        p.h = h;
+        p.dx = dx;
+        p.dy = dy;
+    }
 
     private void monster(int c, int r, int range, int tier) {
         Placement p = place("monster", c, r);
@@ -102,9 +129,10 @@ public final class LevelData {
 
     // ------------------------------------------------------------------ the levels
 
-    /** levelNumber is 1, 2 or 3. */
+    /** levelNumber is 1 to 4. */
     public static LevelData create(int levelNumber) {
         switch (levelNumber) {
+            case 4: return ventWorks();
             case 2: return greenhousePipes();
             case 3: return theFurnace();
             default: return theDrain();
@@ -193,6 +221,64 @@ public final class LevelData {
         L.solid(113, 6, 127, 6); L.rect(117, 6, 119, 6, '~'); L.grid[6][122] = 'F';   // final bridge
         L.pit(113, 128, 'L');
         L.exit(125, 5);
+        L.star(123, 3);                                          // hangs two tiles up: a jump on the way to the exit
+        return L;
+    }
+
+    /**
+     * Level 4 (PROTOTYPE): the gas cat. Four short lessons in a row, each one needs the cloud.
+     *
+     * <p>Distances are measured in seconds of flight: a full bar is {@link com.Group6.mygame.HeatMeter#FULL_FLIGHT_SECONDS}
+     * seconds at {@link com.Group6.mygame.GasForm#FLY_SPEED} px/s, i.e. about 40 tiles.
+     * <ol>
+     *   <li>cols 0-20  "Warm up": charge at a brazier, puff, drift through a wall.</li>
+     *   <li>cols 21-88 "Heat relay": three 18-tile gaps over spikes. One bar covers two of them,
+     *       not three, so the cloud has to refuel at the two island braziers.</li>
+     *   <li>cols 89-110 "Dangerous passage": an 11-tile wall with frost pipes inside it. The gaps in
+     *       the pipes alternate between the floor and the ceiling, so the cloud has to weave.</li>
+     *   <li>cols 111-137 "Valve": a fan, a hanging chamber with a valve in a 1-tile cell, and a
+     *       sealed door. The cat cannot enter the cell, the cloud has to be warm enough to turn the
+     *       valve, then condense on the walkway under the chamber and walk through the opened door.</li>
+     * </ol>
+     * Every checkpoint has a brazier beside it, so a respawn (which empties the bar) can never leave
+     * the player stranded without heat.
+     */
+    private static LevelData ventWorks() {
+        LevelData L = new LevelData("The Vent Works", 138);
+        L.spawn(2, 13);
+
+        // 1. Warm up: the wall is full height, so the cat cannot get past it on foot.
+        L.brazier(5, 13);
+        L.solid(12, 0, 13, 13);
+        L.checkpoint(17, 13);
+        L.brazier(19, 13);
+
+        // 2. Heat relay: 18-tile gaps (1152 px = 5 s of flight) with 4-tile islands between them.
+        L.pit(23, 40, '^');
+        L.solid(41, 14, 44, 14); L.brazier(42, 13);
+        L.pit(45, 62, '^');
+        L.solid(63, 14, 66, 14); L.brazier(64, 13);
+        L.pit(67, 84, '^');
+        L.checkpoint(87, 13);
+        L.brazier(90, 13);
+
+        // 3. Dangerous passage: three frost pipes, gaps alternating low / high / low. A pipe
+        //    column is frost from the ceiling or floor through the floor rows 14-15 as well, or the
+        //    cloud would simply drift underneath the wall.
+        L.solid(94, 0, 104, 13);
+        L.frost(97, 0, 97, 8);    L.frost(97, 14, 97, 15);       // gap on rows 9-13
+        L.frost(100, 5, 100, 15);                                // gap on rows 0-4
+        L.frost(103, 0, 103, 8);  L.frost(103, 14, 103, 15);     // gap on rows 9-13
+
+        // 4. Valve: fan in the way, hanging chamber, sealed door.
+        L.checkpoint(108, 13);
+        L.brazier(110, 13);
+        L.fan(113, 3, 4, 11, -1, 0);                             // blows left, rows 3-13, cols 113-116
+        L.solid(119, 1, 125, 8);                                 // chamber block over a 5-tile walkway
+        L.rect(122, 4, 122, 5, '.');                             // 1x2 cell: too narrow for the cat
+        L.valve(122, 5);
+        L.sealed(128, 0, 129, 13);
+        L.exit(133, 13);
         return L;
     }
 }

@@ -2,7 +2,7 @@ package com.Group6.mygame.level;
 
 import com.badlogic.gdx.graphics.Color;
 
-/** Colours for one level: the tiles and the traps. Level 1 is blue, level 2 green, level 3 red. */
+/** Colours for one level: the tiles and the traps. Level 1 is blue, level 2 green, level 3 red, level 4 violet. */
 public final class LevelTheme {
     public final Color tile;       // solid blocks
     public final Color edge;       // light top edge of blocks
@@ -22,13 +22,15 @@ public final class LevelTheme {
         this.accent = Color.valueOf(accent);
     }
 
-    /** levelNumber is 1, 2 or 3. */
+    /** levelNumber is 1 to 4. */
     public static LevelTheme forLevel(int levelNumber) {
         switch (levelNumber) {
             case 2:
                 return new LevelTheme("4fbf86", "93e8bb", "86e2ab", "3c9b68", "b8f2d2", "f2876f", "8fdcf2");
             case 3:
                 return new LevelTheme("d85c46", "ffa48f", "f0a070", "b4643c", "ffc9b8", "ffd166", "ffd166");
+            case 4:
+                return new LevelTheme("7a6fd0", "bdb4f7", "9aa8f0", "4b4596", "cfd6ff", "ff8fb0", "9ff0ff");
             default:
                 return new LevelTheme("6f97e6", "a9c4f7", "8fb0f0", "3f62a8", "b9d0ff", "f2876f", "8fdcf2");
         }

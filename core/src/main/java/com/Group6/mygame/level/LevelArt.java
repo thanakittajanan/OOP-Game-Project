@@ -22,6 +22,7 @@ public class LevelArt implements Disposable {
     public final TextureRegion saw;
     public final TextureRegion flame;
     public final TextureRegion glow;
+    public final TextureRegion star;
     public final LevelTheme theme;
 
     private final Array<Texture> textures = new Array<>();
@@ -81,6 +82,21 @@ public class LevelArt implements Disposable {
             }
         }
         glow = keep(p);
+
+        // five-pointed star: ten triangles fanned from the centre, alternating outer and inner points
+        p = new Pixmap(64, 64, Pixmap.Format.RGBA8888);
+        p.setColor(Color.WHITE);
+        int cx = 32, cy = 34;
+        for (int i = 0; i < 10; i++) {
+            double a1 = -Math.PI / 2 + i * Math.PI / 5;
+            double a2 = a1 + Math.PI / 5;
+            double r1 = (i % 2 == 0) ? 30 : 12;
+            double r2 = (i % 2 == 0) ? 12 : 30;
+            p.fillTriangle(cx, cy,
+                (int) Math.round(cx + Math.cos(a1) * r1), (int) Math.round(cy + Math.sin(a1) * r1),
+                (int) Math.round(cx + Math.cos(a2) * r2), (int) Math.round(cy + Math.sin(a2) * r2));
+        }
+        star = keep(p);
     }
 
     private TextureRegion keep(Pixmap pixmap) {

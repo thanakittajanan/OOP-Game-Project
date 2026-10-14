@@ -39,11 +39,17 @@ public class MorphState implements PlayerState {
     @Override
     public void update(Player p, float delta) {
         elapsed += delta;
-        p.applyGravity(delta);
+        // A cloud does not fall, and its solids list has no floor in it: with gravity the cat would
+        // sink into the ground for the whole puff.
+        if (!p.getForm().canFly()) p.applyGravity(delta);
         p.moveAndCollide(delta);
 
         if (elapsed >= DURATION) {
-            p.changeState(p.isOnGround() ? p.groundedState : p.fallingState);
+            if (p.getForm().canFly()) {
+                p.changeState(p.gasState);
+            } else {
+                p.changeState(p.isOnGround() ? p.groundedState : p.fallingState);
+            }
         }
     }
 

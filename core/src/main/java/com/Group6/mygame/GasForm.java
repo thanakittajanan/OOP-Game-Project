@@ -4,10 +4,12 @@ package com.Group6.mygame;
  * The cat puffed out into a cloud. Fourth form, after {@link SolidForm}, {@link LiquidForm} and
  * {@link ProneForm}.
  *
- * <p>PREVIEW BUILD. There is no flight here yet: E switches the cat to gas and it still walks,
- * falls and gets stopped by walls like anything else. Only the artwork and the hitbox are real.
- * The point of this version is to watch the gas clip play - if the frames read well, the movement
- * rules get designed around them, and if they do not, no level design was wasted on them.
+ * <p>A cloud floats in every direction ({@link GasState}), drifts through walls and floors, and is
+ * immune to spikes, saws and monsters. It pays for that with the {@link HeatMeter}: the bar drains
+ * while it flies, fire refills it, and at zero the cloud condenses back into a cat wherever it is
+ * (inside a wall that is fatal, over a pit it is a fall). Cold air condenses it at once.
+ *
+ * <p>It is locked until the star at the end of level 3 is collected ({@link GasProgress}).
  */
 public class GasForm implements CatForm {
     /**
@@ -19,6 +21,10 @@ public class GasForm implements CatForm {
 
     public static final float WALK_SPEED = 200f;
     public static final float RUN_SPEED = 260f;
+
+    /** Top speed in the air, in any direction. Level 4 distances are measured in seconds of this. */
+    public static final float FLY_SPEED = 230f;
+    public static final float FLY_ACCEL = 1400f;
 
     @Override
     public String getName() {
@@ -40,15 +46,25 @@ public class GasForm implements CatForm {
         return RUN_SPEED;
     }
 
-    /** Nothing to push off yet. Giving a cloud a jump is a movement decision, not an art one. */
+    /** Nothing to push off: a cloud flies instead (W / S). */
     @Override
     public boolean canJump() {
         return false;
     }
 
-    /** A cloud is stopped by bars exactly like the cat. Only the puddle slips through them. */
+    /** Bars are just more wall to a cloud; {@link #passesWalls()} covers them. */
     @Override
     public boolean passesBars() {
         return false;
+    }
+
+    @Override
+    public boolean canFly() {
+        return true;
+    }
+
+    @Override
+    public boolean passesWalls() {
+        return true;
     }
 }
