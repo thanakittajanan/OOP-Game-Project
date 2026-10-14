@@ -34,16 +34,7 @@ public class FirstScreen implements Screen {
         solids.add(new Rectangle(0, 0, Main.WORLD_WIDTH, 100));  // floor top is at y = 100
         solids.add(new Rectangle(700, 200, 300, 30));       // platform floats above it
 
-        player = new Player(1, 100,
-            game.physicalCatStandTexture,
-            game.physicalCatWalk1Texture,
-            game.physicalCatWalk2Texture,
-            game.physicalCatUpwardJump1Texture,
-            game.physicalCatDownwardJump2Texture,
-            game.ozflow1Texture,
-            game.ozflow2Texture,
-            game.ozflow3Texture
-        );
+        player = game.createPlayer(1, 100);
         player.setSolids(solids);   // without this the cat has nothing to stand on
     }
 

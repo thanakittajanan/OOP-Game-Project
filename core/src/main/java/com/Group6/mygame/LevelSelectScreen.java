@@ -6,8 +6,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
-/** Level selection: only Level 1 is playable so far, Level 2/3 are shown disabled. */
+/** Level selection: Level 1 (The Drain), Level 2 (Greenhouse Pipes), Level 3 (The Furnace). */
 public class LevelSelectScreen extends BaseScreen {
+    private static final String[] LEVEL_NAMES = { "The Drain", "Greenhouse Pipes", "The Furnace" };
 
     public LevelSelectScreen(Main game) {
         super(game);
@@ -23,16 +24,17 @@ public class LevelSelectScreen extends BaseScreen {
 
         root.add(new Label("Select Level", skin, "title")).padBottom(70f).row();
 
-        TextButton level1Button = new TextButton("Level 1", skin);
-        root.add(level1Button).width(300f).height(68f).padBottom(20f).row();
-
-        TextButton level2Button = new TextButton("Level 2", skin);
-        level2Button.setDisabled(true);
-        root.add(level2Button).width(300f).height(68f).padBottom(20f).row();
-
-        TextButton level3Button = new TextButton("Level 3", skin);
-        level3Button.setDisabled(true);
-        root.add(level3Button).width(300f).height(68f).row();
+        for (int i = 0; i < LevelScreen.LEVEL_COUNT; i++) {
+            final int levelNumber = i + 1;
+            TextButton button = new TextButton("Level " + levelNumber + ": " + LEVEL_NAMES[i], skin);
+            root.add(button).width(460f).height(68f).padBottom(20f).row();
+            button.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    openLevel(levelNumber);
+                }
+            });
+        }
 
         stage.addActor(root);
 
@@ -43,18 +45,11 @@ public class LevelSelectScreen extends BaseScreen {
             }
         });
 
-        level1Button.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                openLevel1();
-            }
-        });
-
         addKeyboardShortcuts(
             new Runnable() {
                 @Override
                 public void run() {
-                    openLevel1();
+                    openLevel(1);
                 }
             },
             new Runnable() {
@@ -66,7 +61,7 @@ public class LevelSelectScreen extends BaseScreen {
         );
     }
 
-    private void openLevel1() {
-        switchTo(new LevelScreen(game, game.level1Texture));
+    private void openLevel(int levelNumber) {
+        switchTo(new LevelScreen(game, levelNumber));
     }
 }
