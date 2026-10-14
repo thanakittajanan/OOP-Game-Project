@@ -87,8 +87,9 @@ public class LevelScreen extends BaseScreen {
         Table help = new Table();
         help.setFillParent(true);
         help.bottom().padBottom(18f);
-        help.add(new Label("A / D move    W jump, hold on vines to climb    S crouch = liquid (bars, grates, low gaps)"
-            + "    Shift run    F3 debug    Esc back", skin, "roster"));
+        help.add(new Label("A / D move    Space jump, climb vines    hold S = lie prone (low gaps)"
+            + "    Q = liquid on/off (bars, grates)    E = gas on/off    Shift run    F3 debug    Esc back",
+            skin, "roster"));
         stage.addActor(help);
 
         addBackButton(new Runnable() {
@@ -134,7 +135,8 @@ public class LevelScreen extends BaseScreen {
 
         // 4. UI
         hudLabel.setText(world.getMap().getTitle() + "   |   Level " + levelNumber + " / " + LEVEL_COUNT
-            + "   |   HP " + Math.max(0, player.getHealth()));
+            + "   |   HP " + Math.max(0, player.getHealth())
+            + "   |   " + player.getForm().getName() + " / " + player.getStateName());
         messageLabel.setText(world.getMessage());
         stage.getViewport().apply();
         stage.act(delta);
