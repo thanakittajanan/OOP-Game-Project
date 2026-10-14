@@ -10,7 +10,8 @@ import com.badlogic.gdx.math.Rectangle;
  *
  * <pre>
  *   GameObject
- *     └── Hazard ── SpikeStrip, FireHole, FlameVent, FallingSpike, SawBlade, Fireball
+ *     └── Hazard ── SpikeStrip, FireHole, FlameVent, FallingSpike, SawBlade, Fireball,
+ *                   Brazier (heat, harmless), FrostPipe (freezes gas), Fan (wind)
  * </pre>
  */
 public abstract class Hazard extends GameObject {
@@ -38,6 +39,29 @@ public abstract class Hazard extends GameObject {
     /** Horizontal centre of the hazard, used to push the cat away on KNOCKBACK. */
     public float getCenterX() {
         return bounds.x + bounds.width / 2f;
+    }
+
+    /**
+     * Heat per second this hazard feeds a cat standing in it (0 = not a fire). Used by the gas form:
+     * LevelWorld adds it to the cat's {@link com.Group6.mygame.HeatMeter}, and a cloud touching a
+     * fire is warmed instead of hurt.
+     */
+    public float heatRate() {
+        return 0f;
+    }
+
+    /** True for cold air: a gas cloud touching it condenses at once. */
+    public boolean freezesGas() {
+        return false;
+    }
+
+    /** Wind this hazard blows on a cloud inside its box, in px/s. Fans only. */
+    public float windX() {
+        return 0f;
+    }
+
+    public float windY() {
+        return 0f;
     }
 
     /** Fireballs return true once they hit a wall; LevelWorld then removes them. */

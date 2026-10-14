@@ -20,12 +20,13 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 
 /**
- * Plays one level (1, 2 or 3). The levels themselves are written in {@code level/LevelData.java}.
+ * Plays one level (1 to 4). The levels themselves are written in {@code level/LevelData.java}.
  *
  * <p>Two cameras: the world camera scrolls sideways to follow the cat; the UI stage (back button, HUD)
  * stays fixed on screen. Draw order: background image → tiles → traps and monsters → cat → UI.
  *
- * <p>Press F3 to show the debug view (solid boxes, bars, hitboxes).
+ * <p>Press F3 to show the debug view (solid boxes, bars, hitboxes). Press F4 to lock / unlock the
+ * gas form (developer shortcut, so level 4 can be tested without replaying level 3).
  */
 public class LevelScreen extends BaseScreen {
     public static final int LEVEL_COUNT = LevelData.LEVEL_COUNT;
@@ -35,6 +36,7 @@ public class LevelScreen extends BaseScreen {
     private static boolean debug = false;
 
     private final int levelNumber;
+    private final boolean restoreCheckpoint;   // true after a game over: start from the last flag
     private Texture backgroundTexture;
     private Player player;
     private LevelWorld world;
@@ -44,12 +46,21 @@ public class LevelScreen extends BaseScreen {
     private SpriteBatch batch;
     private ShapeRenderer shapes;
 
+    // The heat bar (top left, under the back button). Drawn with the shape renderer in UI coordinates.
+    private static final float BAR_X = 40f, BAR_Y = 905f, BAR_W = 380f, BAR_H = 26f;
+
     private Label hudLabel;
+    private Label heatLabel;
     private Label messageLabel;
     private float endTimer;
 
     public LevelScreen(Main game, int levelNumber) {
+        this(game, levelNumber, false);
+    }
+
+    public LevelScreen(Main game, int levelNumber, boolean restoreCheckpoint) {
         super(game);
+        this.restoreCheckpoint = restoreCheckpoint;
         this.levelNumber = Math.max(1, Math.min(LEVEL_COUNT, levelNumber));
     }
 
@@ -64,7 +75,10 @@ public class LevelScreen extends BaseScreen {
         shapes = new ShapeRenderer();
 
         player = game.createPlayer(0f, 0f);       // LevelWorld moves it to the map's spawn point
-        world = new LevelWorld(levelNumber, player);
+        world = new LevelWorld(levelNumber, player, restoreCheckpoint);
+        if (levelNumber == LEVEL_COUNT && !GasProgress.isUnlocked()) {
+            world.announce("This level needs the gas form - collect the star at the end of The Furnace");
+        }
 
         // HUD: level name and HP, top-right
         Table hud = new Table();
@@ -73,6 +87,14 @@ public class LevelScreen extends BaseScreen {
         hudLabel = new Label("", skin);
         hud.add(hudLabel);
         stage.addActor(hud);
+
+        // heat bar caption, under the back button
+        Table heat = new Table();
+        heat.setFillParent(true);
+        heat.top().left().padTop(100f).padLeft(BAR_X);
+        heatLabel = new Label("", skin);
+        heat.add(heatLabel);
+        stage.addActor(heat);
 
         // big centre message: "Checkpoint", "Level cleared!", "Game over"
         Table centre = new Table();
@@ -88,7 +110,8 @@ public class LevelScreen extends BaseScreen {
         help.setFillParent(true);
         help.bottom().padBottom(18f);
         help.add(new Label("A / D move    Space jump, climb vines    hold S = lie prone (low gaps)"
-            + "    Q = liquid on/off (bars, grates)    E = gas on/off    Shift run    F3 debug    Esc back",
+            + "    Q = liquid on/off (bars, grates)    E = gas on/off (then W A S D fly)    Shift run"
+            + "    F3 debug    F4 gas lock (dev)    Esc back",
             skin, "roster"));
         stage.addActor(help);
 
@@ -110,6 +133,10 @@ public class LevelScreen extends BaseScreen {
     public void render(float delta) {
         world.update(delta);
         if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) debug = !debug;
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+            GasProgress.set(!GasProgress.isUnlocked());
+            world.announce(GasProgress.isUnlocked() ? "Gas form unlocked (dev)" : "Gas form locked (dev)");
+        }
         if (handleLevelEnd(delta)) return;        // switched screen: this one is disposed now
 
         followCat();
@@ -138,9 +165,32 @@ public class LevelScreen extends BaseScreen {
             + "   |   HP " + Math.max(0, player.getHealth())
             + "   |   " + player.getForm().getName() + " / " + player.getStateName());
         messageLabel.setText(world.getMessage());
+        heatLabel.setText(GasProgress.isUnlocked()
+            ? "HEAT  " + Math.round(player.getHeat().fraction() * 100f) + "%"
+            : "GAS LOCKED  (star at the end of The Furnace)");
         stage.getViewport().apply();
+        if (GasProgress.isUnlocked()) drawHeatBar();
         stage.act(delta);
         stage.draw();
+    }
+
+    /**
+     * The single progress bar. Orange when hot, blue as it cools; the tick marks the "thin" line below
+     * which a cloud cannot turn a valve. Drawn before the stage so the label sits on top of nothing.
+     */
+    private void drawHeatBar() {
+        float f = player.getHeat().fraction();
+        shapes.setProjectionMatrix(stage.getCamera().combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        shapes.setColor(0.05f, 0.07f, 0.14f, 1f);
+        shapes.rect(BAR_X - 4f, BAR_Y - 4f, BAR_W + 8f, BAR_H + 8f);
+        shapes.setColor(0.18f, 0.22f, 0.34f, 1f);
+        shapes.rect(BAR_X, BAR_Y, BAR_W, BAR_H);
+        shapes.setColor(0.35f + 0.65f * f, 0.65f - 0.15f * f, 1f - 0.8f * f, 1f);
+        shapes.rect(BAR_X, BAR_Y, BAR_W * f, BAR_H);
+        shapes.setColor(1f, 1f, 1f, 1f);
+        shapes.rect(BAR_X + BAR_W * HeatMeter.THIN_FRACTION - 1f, BAR_Y - 4f, 3f, BAR_H + 8f);
+        shapes.end();
     }
 
     /** Camera follows the cat sideways and stops at the map edges. The map is 16 tiles (1024 px) tall. */
@@ -161,7 +211,7 @@ public class LevelScreen extends BaseScreen {
         if (endTimer < END_DELAY) return false;
 
         if (world.getStatus() == LevelWorld.Status.DEAD) {
-            switchTo(new LevelScreen(game, levelNumber));
+            switchTo(new LevelScreen(game, levelNumber, true));   // back to the last checkpoint
         } else if (levelNumber < LEVEL_COUNT) {
             switchTo(new LevelScreen(game, levelNumber + 1));
         } else {

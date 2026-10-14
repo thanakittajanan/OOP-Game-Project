@@ -5,6 +5,8 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
 
 
 public class Player extends DynamicEntity {
@@ -77,6 +79,19 @@ public class Player extends DynamicEntity {
 
     private int health = 3;
 
+    // ----- gas form ----- //
+    /** The heat bar. A new Player (a new level) starts cold: heat has to be found in the level. */
+    private final HeatMeter heat = new HeatMeter();
+    /** What the solid cat would collide with, set by LevelWorld; lets a cloud check it has room to set. */
+    private Array<Rectangle> fullSolids = new Array<>();
+    private final Rectangle fitProbe = new Rectangle();
+    /** Wind this frame (px/s), set by LevelWorld from the fans the cloud is inside. */
+    private float windX, windY;
+    /** One-line message for the player ("too cold", "no room"); LevelWorld shows and clears it. */
+    private String hint;
+    /** Set when the cloud had to condense inside solid rock; LevelWorld then sends the cat back. */
+    private boolean condensedInWall;
+
     private final Sprite catSprite;
     private final SpriteFrames standFrames, walkFrames, jumpFrames, liquidWalkFrames, morphFrames, proneFrames;
     private final SpriteFrames gasMorphFrames, gasFloatFrames;
@@ -111,6 +126,7 @@ public class Player extends DynamicEntity {
     final PlayerState jumpingState = new JumpingState();
     final PlayerState fallingState = new FallingState();
     final MorphState morphState = new MorphState();
+    final PlayerState gasState = new GasState();
     private PlayerState state;
 
     public Player(float x, float y, SpriteFrames stand, SpriteFrames walk, SpriteFrames jump,
@@ -176,6 +192,7 @@ public class Player extends DynamicEntity {
      * the top, so the feet ({@code position.y}) stay where they are and only the head moves.
      */
     void setForm(CatForm next) {
+        if (form.canFly() && !next.canFly()) velocity.scl(0.25f);   // a cloud's drift must not launch the cat
         form = next;
         bounds.setSize(BODY_WIDTH, next.height());
         syncBounds();
@@ -202,8 +219,23 @@ public class Player extends DynamicEntity {
             wantsGas = false;
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
-            wantsGas = !wantsGas;
-            wantsLiquid = false;
+            if (wantsGas) {
+                wantsGas = false;
+            } else if (!GasProgress.isUnlocked()) {
+                hint = "Gas is locked - find the star at the end of The Furnace";
+            } else if (!heat.canStart()) {
+                hint = "Too cold to puff into gas - warm up at a fire";
+            } else {
+                wantsGas = true;
+                wantsLiquid = false;
+            }
+        }
+
+        // The bar ran dry (or cold air emptied it): the cloud sets where it is, ready or not.
+        boolean forced = false;
+        if (form.canFly() && heat.isEmpty()) {
+            wantsGas = false;
+            forced = true;
         }
 
         CatForm want = solidForm;
@@ -222,11 +254,36 @@ public class Player extends DynamicEntity {
         if (want != solidForm && form != solidForm && want != form) want = solidForm;
 
         if (want == form) return;
-        // Shrinking never needs a check; only growing into a space the tall box does not fit.
-        if (want.height() > form.height()
-            && isBlocked(position.x, position.y, BODY_WIDTH, want.height())) return;
+
+        if (form.canFly()) {
+            // Leaving the cloud: the cat needs room to exist. By choice (E) it simply stays a cloud
+            // until it floats somewhere with room; forced (heat gone) it sets anyway, and if that is
+            // inside rock LevelWorld sends it back to the checkpoint.
+            if (!fitsAsCat(want.height())) {
+                if (forced) {
+                    condensedInWall = true;
+                } else {
+                    wantsGas = true;
+                    hint = "No room to condense here - fly out of the wall first";
+                    return;
+                }
+            }
+        } else if (want.height() > form.height()
+            && isBlocked(position.x, position.y, BODY_WIDTH, want.height())) {
+            // Shrinking never needs a check; only growing into a space the tall box does not fit.
+            return;
+        }
 
         startMorph(want);
+    }
+
+    /** Would a cat of this height fit here, against everything a solid cat collides with? */
+    private boolean fitsAsCat(float height) {
+        fitProbe.set(position.x + 0.01f, position.y + 0.01f, BODY_WIDTH - 0.02f, height - 0.02f);
+        for (int i = 0; i < fullSolids.size; i++) {
+            if (fitProbe.overlaps(fullSolids.get(i))) return false;
+        }
+        return true;
     }
 
     private void startMorph(CatForm target) {
@@ -267,6 +324,28 @@ public class Player extends DynamicEntity {
     /** Left/right steering in the air: top speed is the takeoff speed. */
     void applyAirControl(float delta) {
         accelerateX(readMoveInput(), airSpeed, AIR_ACCEL, AIR_FRICTION, delta);
+    }
+
+    /**
+     * Free flight for the cloud: A/D/W/S set a direction (diagonals are normalised so they are not
+     * faster), the wind from any fan is added on top, and thin gas is pushed harder - at an empty
+     * bar the same fan moves it twice as far as at a full one.
+     */
+    void applyGasControl(float delta) {
+        float ix = readMoveInput();
+        float iy = 0f;
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) iy += 1f;
+        if (Gdx.input.isKeyPressed(Input.Keys.S)) iy -= 1f;
+        float length = (float) Math.sqrt(ix * ix + iy * iy);
+        if (length > 0f) {
+            ix /= length;
+            iy /= length;
+        }
+        float thinness = 1f + (1f - heat.fraction());
+        float targetX = ix * GasForm.FLY_SPEED + windX * thinness;
+        float targetY = iy * GasForm.FLY_SPEED + windY * thinness;
+        velocity.x = approach(velocity.x, targetX, GasForm.FLY_ACCEL * delta);
+        velocity.y = approach(velocity.y, targetY, GasForm.FLY_ACCEL * delta);
     }
 
     /** Speeds up toward input * maxSpeed, or slows to a stop with friction when no key is held. */
@@ -346,6 +425,14 @@ public class Player extends DynamicEntity {
                 break;
             default:
                 drawFrame(standFrames, 0, solidForm.height());
+        }
+
+        // A cooling cloud thins out and turns blue: the picture is the second readout of the heat bar.
+        float warmth = heat.fraction();
+        if (form == gasForm && state != morphState) {
+            catSprite.setColor(0.65f + 0.35f * warmth, 0.82f + 0.18f * warmth, 1f, 0.45f + 0.55f * warmth);
+        } else {
+            catSprite.setColor(1f, 1f, 1f, 1f);
         }
     }
 
@@ -453,6 +540,36 @@ public class Player extends DynamicEntity {
         catSprite.setPosition(position.x + BODY_WIDTH / 2f - width / 2f,   // centred on the hitbox
                               position.y - bottomGap * scale);
         catSprite.setFlip(facingLeft, false);
+    }
+
+    // ===================== Gas form: what LevelWorld reads and sets ===================== //
+
+    public HeatMeter getHeat() {
+        return heat;
+    }
+
+    /** The solid-cat collision list; only used to check a cloud has room to condense. */
+    public void setFullSolids(Array<Rectangle> solids) {
+        this.fullSolids = (solids != null) ? solids : new Array<Rectangle>();
+    }
+
+    public void setWind(float x, float y) {
+        windX = x;
+        windY = y;
+    }
+
+    /** The message the player should see ("Too cold..."), or null. Reading it clears it. */
+    public String pollHint() {
+        String h = hint;
+        hint = null;
+        return h;
+    }
+
+    /** True once if the cloud condensed inside rock since the last call. */
+    public boolean pollCondensedInWall() {
+        boolean b = condensedInWall;
+        condensedInWall = false;
+        return b;
     }
 
     // ===================== Interface called for member 2 (trap damage) ===================== //

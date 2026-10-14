@@ -6,9 +6,12 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
-/** Level selection: Level 1 (The Drain), Level 2 (Greenhouse Pipes), Level 3 (The Furnace). */
+/**
+ * Level selection: Level 1 (The Drain), Level 2 (Greenhouse Pipes), Level 3 (The Furnace),
+ * Level 4 (The Vent Works - needs the gas form from the star at the end of level 3).
+ */
 public class LevelSelectScreen extends BaseScreen {
-    private static final String[] LEVEL_NAMES = { "The Drain", "Greenhouse Pipes", "The Furnace" };
+    private static final String[] LEVEL_NAMES = { "The Drain", "Greenhouse Pipes", "The Furnace", "The Vent Works" };
 
     public LevelSelectScreen(Main game) {
         super(game);

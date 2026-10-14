@@ -18,11 +18,16 @@ public class LevelMap {
     private final int widthInTiles, heightInTiles;
     private final float tileSize;
     private final char[][] tiles;         // [x][y], y-up
-    private final boolean[][] solidGrid;  // [x][y] true where a tile always blocks (solid, vine, vent)
+    private final boolean[][] solidGrid;  // [x][y] true where a tile always blocks (solid, vine, vent, frost)
 
     private final Array<Rectangle> terrainSolids = new Array<>();   // merged into long strips (fewer boxes, no seams)
     private final Array<Rectangle> liquidPassables = new Array<>(); // bars and grates: solid for the standing cat only
     private final Array<Rectangle> vines = new Array<>();           // climbable walls
+    private final Array<Rectangle> sealedDoors = new Array<>();     // stop the cat AND the gas cloud, until a valve is turned
+    private final Array<Rectangle> boundarySolids = new Array<>();  // the four edges of the map: the only "walls" a cloud respects
+    private Rectangle valve;                                        // null in levels without one
+    private boolean valveOpen;
+    private Rectangle star;                                         // null in levels without one
     private final Array<Hazard> hazards = new Array<>();
     private final Array<CrumbleBlock> crumbles = new Array<>();
     private final Array<Monster> monsters = new Array<>();
@@ -31,7 +36,7 @@ public class LevelMap {
     private final Rectangle exit = new Rectangle();
 
     /**
-     * @param levelNumber 1, 2 or 3
+     * @param levelNumber 1 to 4
      * @param cat         the cat's hitbox; traps and monsters keep this reference to see where the cat is
      * @param sink        where monsters put new hazards (fireballs)
      */
@@ -82,6 +87,16 @@ public class LevelMap {
                         solidGrid[x][y] = true;
                         hazards.add(new FlameVent(art, px, py, tileSize, flameHeightAbove(x, y), ventIndex++));
                         break;
+                    case 'I':
+                        solidGrid[x][y] = true;
+                        hazards.add(new FrostPipe(art, px, py, tileSize));
+                        break;
+                    case 'S':
+                        // The lowest tile of a door column reaches down to the bottom of the map, or a
+                        // cloud would drift under the door through the floor.
+                        boolean lowest = y == 0 || tiles[x][y - 1] != 'S';
+                        sealedDoors.add(new Rectangle(px, lowest ? 0f : py, tileSize, lowest ? py + tileSize : tileSize));
+                        break;
                     case '~':
                         crumbles.add(new CrumbleBlock(art, px, py, tileSize, cat));
                         break;
@@ -118,6 +133,13 @@ public class LevelMap {
         float h = heightInTiles * tileSize;
         terrainSolids.add(new Rectangle(-100f, 0f, 100f, h + 400f));
         terrainSolids.add(new Rectangle(getWidth(), 0f, 100f, h + 400f));
+
+        // A gas cloud flies through all of the above, so it needs its own edges: all four sides.
+        float w = getWidth();
+        boundarySolids.add(new Rectangle(-100f, -400f, 100f, h + 800f));
+        boundarySolids.add(new Rectangle(w, -400f, 100f, h + 800f));
+        boundarySolids.add(new Rectangle(-100f, -100f, w + 200f, 100f));
+        boundarySolids.add(new Rectangle(-100f, h, w + 200f, 100f));
     }
 
     // ------------------------------------------------------------------ placed objects
@@ -150,6 +172,20 @@ public class LevelMap {
                     break;
                 case "fallingSpike":
                     hazards.add(new FallingSpike(art, this, cx, bottom + tileSize, cat));
+                    break;
+                case "brazier":
+                    hazards.add(new Brazier(art, left, bottom, tileSize));
+                    break;
+                case "fan":
+                    // (col, row) is the zone's top-left tile; the zone grows right and down
+                    float fanBottom = (heightInTiles - (p.row + p.h)) * tileSize;
+                    hazards.add(new Fan(art, left, fanBottom, p.w * tileSize, p.h * tileSize, p.dx, p.dy));
+                    break;
+                case "valve":
+                    valve = new Rectangle(left, bottom, tileSize, tileSize);
+                    break;
+                case "star":
+                    star = new Rectangle(left + 6f, bottom + 6f, tileSize - 12f, tileSize - 12f);
                     break;
                 default:
                     break;
@@ -193,6 +229,19 @@ public class LevelMap {
                         art.draw(batch, art.white, 1f, 0.42f, 0.17f, 1f, px, py + 20f, s, 28f);
                         art.draw(batch, art.white, 1f, 0.82f, 0.4f, 1f, px, py + 40f, s, 8f);
                         break;
+                    case 'S':
+                        if (valveOpen) break;                                   // the door is gone
+                        art.draw(batch, art.white, 0.55f, 0.95f, 1f, 0.55f, px, py, s, s);
+                        art.draw(batch, art.white, 0.85f, 1f, 1f, 1f, px, py, 5f, s);
+                        art.draw(batch, art.white, 0.85f, 1f, 1f, 1f, px + s - 5f, py, 5f, s);
+                        art.draw(batch, art.white, 0.85f, 1f, 1f, 0.9f, px + 22f, py + 6f, 6f, s - 12f);
+                        break;
+                    case 'I':
+                        // frost pipe: pale blue with a bright ring, clearly not ordinary rock
+                        art.draw(batch, art.white, 0.62f, 0.86f, 0.98f, 1f, px, py, s, s);
+                        art.draw(batch, art.white, 0.95f, 1f, 1f, 1f, px + 8f, py + 8f, s - 16f, s - 16f);
+                        art.draw(batch, art.white, 0.35f, 0.66f, 0.92f, 1f, px + 20f, py + 20f, s - 40f, s - 40f);
+                        break;
                     case 'F':
                         art.draw(batch, art.white, 0.16f, 0.08f, 0.07f, 1f, px, py, s, s);
                         for (int k = 0; k < 3; k++) art.draw(batch, art.white, 1f, 0.62f, 0.26f, 1f, px + 12f + k * 16f, py + 36f, 6f, 20f);
@@ -203,6 +252,18 @@ public class LevelMap {
                 }
             }
         }
+    }
+
+    // ------------------------------------------------------------------ valve and sealed doors
+
+    /** The valve has been turned: every sealed door disappears, for the cat and the cloud alike. */
+    public void openSealedDoors() {
+        valveOpen = true;
+        sealedDoors.clear();
+    }
+
+    public boolean isValveOpen() {
+        return valveOpen;
     }
 
     // ------------------------------------------------------------------ queries
@@ -221,6 +282,12 @@ public class LevelMap {
     public Array<Rectangle> getTerrainSolids() { return terrainSolids; }
     public Array<Rectangle> getLiquidPassables() { return liquidPassables; }
     public Array<Rectangle> getVines() { return vines; }
+    /** Sealed doors that are still shut (empty once the valve is turned). */
+    public Array<Rectangle> getSealedDoors() { return sealedDoors; }
+    /** The four edges of the map, the only things a gas cloud cannot pass. */
+    public Array<Rectangle> getBoundarySolids() { return boundarySolids; }
+    public Rectangle getValve() { return valve; }
+    public Rectangle getStar() { return star; }
     public Array<Hazard> getHazards() { return hazards; }
     public Array<CrumbleBlock> getCrumbles() { return crumbles; }
     public Array<Monster> getMonsters() { return monsters; }

@@ -19,6 +19,11 @@ public class FireHole extends Hazard {
     }
 
     @Override
+    public float heatRate() {
+        return 45f;
+    }
+
+    @Override
     public Effect getEffect() {
         return Effect.RESPAWN;
     }

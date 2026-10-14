@@ -28,4 +28,17 @@ public interface CatForm {
 
     /** True if the form slips through bars and grates (the {@code '|'} tiles). */
     boolean passesBars();
+
+    /** True for a form that floats freely (no gravity, W/S move it up and down). Only the cloud. */
+    default boolean canFly() {
+        return false;
+    }
+
+    /**
+     * True if the form drifts through ordinary walls and floors. Sealed doors and the edge of the
+     * map still stop it - see {@code LevelWorld#rebuildSolids}.
+     */
+    default boolean passesWalls() {
+        return false;
+    }
 }

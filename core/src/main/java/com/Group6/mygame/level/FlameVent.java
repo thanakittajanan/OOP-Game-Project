@@ -42,6 +42,12 @@ public class FlameVent extends Hazard {
         return isBurning() && cat.overlaps(bounds);
     }
 
+    /** A burning vent warms a gas cloud flying through it. */
+    @Override
+    public float heatRate() {
+        return isBurning() ? 45f : 0f;
+    }
+
     @Override
     public Effect getEffect() {
         return Effect.RESPAWN;
