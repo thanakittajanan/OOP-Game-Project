@@ -34,36 +34,14 @@ public class Player extends DynamicEntity {
 
     private static final float MORPH_LIQUID_HEIGHT = 65f;
 
-    /**
-     * The height the prone clip's <em>canvas</em> is drawn at - deliberately not {@link ProneForm#HEIGHT}.
-     * The drawn height and the hitbox are two different numbers here, exactly as they are at the liquid
-     * end of a melt (see {@link #MORPH_LIQUID_HEIGHT}).
-     *
-     * <p>The six prone frames were cut so that the standing one's ink fills the 216 px canvas. Drawing
-     * that canvas at the solid cat's 90 therefore makes the first lie-down frame come out 90 px tall -
-     * the same as {@code physical-stand-default} - so pressing S does not make the cat jump in size.
-     * The flat last frame lands at 53.8 px on its own, only because the artwork inside the canvas is
-     * flatter, and that is the number {@link ProneForm#HEIGHT} is set to.
-     */
+
     private static final float PRONE_DRAW_HEIGHT = 90f;
 
-    /**
-     * The two crawl poses inside the prone clip. That clip is one 6-frame stem: 0-3 lie the cat down,
-     * 4-5 are the poses it shuffles between once it is flat. The crawl starts on 5 because 5 is the
-     * frame the lie-down ends on - starting to crawl must not flick the cat back up a pose.
-     */
+
     private static final int PRONE_CRAWL_FROM = 5;
     private static final int PRONE_CRAWL_TO = 4;
 
-    /**
-     * The height the gas clips' <em>canvas</em> is drawn at - both the morph and the drift, because
-     * the two were cut onto one 342 x 252 canvas so that a single number keeps them the same size
-     * across the hand-off.
-     *
-     * <p>Chosen so that the morph's first frame comes out at exactly the solid cat's 90 px: the cat
-     * presses E and puffs out, it does not jump in size. The finished cloud therefore lands at
-     * 104.4 px, and that is {@link GasForm#HEIGHT}.
-     */
+
     private static final float GAS_DRAW_HEIGHT = 106.5f;
 
     // Which clip is playing; a switch resets animTimer so every animation starts on frame 0.
@@ -103,12 +81,7 @@ public class Player extends DynamicEntity {
     private final CatForm gasForm = new GasForm();
     private CatForm form = solidForm;
 
-    /**
-     * The player's wish, not the cat's body: Q and E flip these and {@link #updateForm} morphs the
-     * cat to match. They are fields rather than key tests because both keys are toggles - the puddle
-     * stays until Q is pressed again, the cloud until E is - which is also what keeps the form keys
-     * from fighting over the cat. Turning one on turns the other off; S is the only hold.
-     */
+
     private boolean wantsLiquid = false;
     private boolean wantsGas = false;
 
@@ -187,10 +160,7 @@ public class Player extends DynamicEntity {
         return form;
     }
 
-    /**
-     * Switches the hitbox to another form. Called by {@link MorphState#enter}; the height changes from
-     * the top, so the feet ({@code position.y}) stay where they are and only the head moves.
-     */
+
     void setForm(CatForm next) {
         if (form.canFly() && !next.canFly()) velocity.scl(0.25f);   // a cloud's drift must not launch the cat
         form = next;
@@ -198,19 +168,7 @@ public class Player extends DynamicEntity {
         syncBounds();
     }
 
-    /**
-     * Reads the three form keys: Q toggles the puddle, E toggles the cloud, S held lies the cat down.
-     * Ignored while a morph is playing.
-     *
-     * <p>Two keys are toggles and one is a hold, which is what stops them fighting: the toggles win
-     * outright and S is read only when neither is on, so a cat that wants to crawl presses Q or E
-     * back into a cat first. Turning a toggle on turns the other off.
-     *
-     * <p>Growing only happens where there is room: the {@code isBlocked} test asks whether the taller
-     * box would fit at the cat's feet, so a cat whose player lets go of S under a low ceiling stays
-     * prone until it crawls out rather than standing up into the ceiling. Because the wish is re-read
-     * every frame, it stands up by itself the moment it is clear.
-     */
+
     private void updateForm() {
         if (state == morphState) return;
 
@@ -231,7 +189,6 @@ public class Player extends DynamicEntity {
             }
         }
 
-        // The bar ran dry (or cold air emptied it): the cloud sets where it is, ready or not.
         boolean forced = false;
         if (form.canFly() && heat.isEmpty()) {
             wantsGas = false;
@@ -247,18 +204,11 @@ public class Player extends DynamicEntity {
             want = proneForm;
         }
 
-        // The only morphs ever drawn start or end on the cat: "into a puddle", "onto the floor",
-        // "puffed out". So a morph asked for between two other forms goes through the cat - a puddle
-        // told to become gas plays the melt backwards and then the gas clip rather than inventing a
-        // puddle-to-gas transition that does not exist. This is also why S needs no guard here.
         if (want != solidForm && form != solidForm && want != form) want = solidForm;
 
         if (want == form) return;
 
         if (form.canFly()) {
-            // Leaving the cloud: the cat needs room to exist. By choice (E) it simply stays a cloud
-            // until it floats somewhere with room; forced (heat gone) it sets anyway, and if that is
-            // inside rock LevelWorld sends it back to the checkpoint.
             if (!fitsAsCat(want.height())) {
                 if (forced) {
                     condensedInWall = true;
@@ -287,23 +237,22 @@ public class Player extends DynamicEntity {
     }
 
     private void startMorph(CatForm target) {
+        // Only the puddle has a sound, and a water drop under a cat lying down would be wrong.
+        if (target == liquidForm) Audio.morph();
         morphState.begin(form, target);
         changeState(morphState);
     }
 
     // ===================== Input helpers (used by the states) ===================== //
 
-    /** Jump key. A form with nothing to push off ({@link CatForm#canJump()}) simply reports "no". */
     boolean isJumpPressed() {
         return form.canJump() && Gdx.input.isKeyJustPressed(Input.Keys.SPACE);
     }
 
-    /** Is the jump key still down - used to cut a jump short. Also false for a form that cannot jump. */
     boolean isJumpHeld() {
         return form.canJump() && Gdx.input.isKeyPressed(Input.Keys.SPACE);
     }
 
-    /** Reads A/D (D wins if both are held) and remembers which way the cat faces. */
     private float readMoveInput() {
         if (Gdx.input.isKeyPressed(Input.Keys.D)) {
             facingLeft = false;
@@ -321,16 +270,11 @@ public class Player extends DynamicEntity {
         accelerateX(readMoveInput(), getGroundMaxSpeed(), GROUND_ACCEL, GROUND_FRICTION, delta);
     }
 
-    /** Left/right steering in the air: top speed is the takeoff speed. */
     void applyAirControl(float delta) {
         accelerateX(readMoveInput(), airSpeed, AIR_ACCEL, AIR_FRICTION, delta);
     }
 
-    /**
-     * Free flight for the cloud: A/D/W/S set a direction (diagonals are normalised so they are not
-     * faster), the wind from any fan is added on top, and thin gas is pushed harder - at an empty
-     * bar the same fan moves it twice as far as at a full one.
-     */
+
     void applyGasControl(float delta) {
         float ix = readMoveInput();
         float iy = 0f;
@@ -348,7 +292,7 @@ public class Player extends DynamicEntity {
         velocity.y = approach(velocity.y, targetY, GasForm.FLY_ACCEL * delta);
     }
 
-    /** Speeds up toward input * maxSpeed, or slows to a stop with friction when no key is held. */
+    //Speeds up toward input maxSpeed, or slows to a stop with friction when no key is held.
     private void accelerateX(float input, float maxSpeed, float accel, float friction, float delta) {
         if (input == 0f) {
             velocity.x = approach(velocity.x, 0f, friction * delta);
@@ -358,19 +302,17 @@ public class Player extends DynamicEntity {
         }
     }
 
-    /** Moves {@code value} toward {@code target} by at most {@code maxChange} (never overshoots). */
     private static float approach(float value, float target, float maxChange) {
         if (value < target) return Math.min(value + maxChange, target);
         return Math.max(value - maxChange, target);
     }
 
-    /** Top horizontal speed on the ground right now. The form decides the numbers, Shift decides which one. */
     private float getGroundMaxSpeed() {
         return running ? form.runSpeed() : form.walkSpeed();
     }
 
-    /** Launches the cat upward and remembers the takeoff speed for air control. */
     void startJump() {
+        Audio.jump();
         velocity.y = JUMP_SPEED;
         airSpeed = getGroundMaxSpeed();      // 400 if running, 200 if walking, 340 if a running puddle
         onGround = false;
@@ -412,9 +354,7 @@ public class Player extends DynamicEntity {
                 drawFrame(proneFrames, proneCrawlFrame(), PRONE_DRAW_HEIGHT);
                 break;
             case CLIP_GAS:
-                // Always cycling, moving or not: a cloud that freezes mid-puff when the player lets
-                // go of D looks broken. It is also the one clip drawn by its canvas bottom - see the
-                // four-argument drawFrame.
+
                 drawFrame(gasFloatFrames, elapsedFrames(GAS_FRAME_TIME), GAS_DRAW_HEIGHT, 0);
                 break;
             case CLIP_RUN:
@@ -447,17 +387,12 @@ public class Player extends DynamicEntity {
         return running ? CLIP_RUN : CLIP_WALK;
     }
 
-    /**
-     * Which frame of the prone clip to draw. Standing still, the cat holds the pose the lie-down ended
-     * on; crawling, it shuffles between the clip's last two frames and no further, so that
-     * {@link #elapsedFrames} counts the <em>crawl</em> and not the whole six-frame stem.
-     */
+
     private int proneCrawlFrame() {
         if (!moving) return PRONE_CRAWL_FROM;
         return elapsedFrames(PRONE_FRAME_TIME) % 2 == 0 ? PRONE_CRAWL_FROM : PRONE_CRAWL_TO;
     }
 
-    /** Frames of the current clip that have gone by; {@link SpriteFrames#get(int)} wraps it into range. */
     private int elapsedFrames(float secondsPerFrame) {
         return (int) (animTimer / secondsPerFrame);
     }
@@ -480,20 +415,13 @@ public class Player extends DynamicEntity {
         drawFrame(clip, index, from + (to - from) * progress);
     }
 
-    /**
-     * Which clip the running morph is played with. Each clip is drawn as "the cat becoming X", so the
-     * one that ends in a puddle uses the melt frames, the one that ends flat on the floor uses the
-     * prone frames and the one that ends as a cloud uses the gas frames; each is played backwards for
-     * the way back - see {@link #drawMorphFrame}. Only one of the two ends can be a non-cat form, so
-     * the choice is never ambiguous.
-     */
+
     private SpriteFrames morphClip() {
         CatForm from = morphState.getFrom(), to = morphState.getTo();
         if (from == gasForm || to == gasForm) return gasMorphFrames;
         return (from == liquidForm || to == liquidForm) ? morphFrames : proneFrames;
     }
 
-    /** How tall a form's artwork is drawn - its hitbox, except where the art says otherwise. */
     private float drawnHeightOf(CatForm target) {
         if (target == liquidForm) return MORPH_LIQUID_HEIGHT;
         if (target == proneForm) return PRONE_DRAW_HEIGHT;
@@ -501,34 +429,12 @@ public class Player extends DynamicEntity {
         return target.height();
     }
 
-    /**
-     * Draws one frame so the cat is always the same size and always standing on the floor.
-     *
-     * <p>Both rules come from measurements {@link SpriteFrames} took at load time, and both are needed:
-     * the picture is scaled so it is {@code targetHeight} tall, and it is shifted down by the
-     * transparent rows under the artwork so the cat's <em>feet</em>, not the canvas edge, land on
-     * {@code position.y}. The frames were exported on canvases with 4-63 px of padding under the cat,
-     * so without the second rule it visibly floats on some frames and not others.
-     *
-     * <p>The picture is centred on the hitbox and is wider than it: the stand frame comes out 129 px
-     * wide against a 90 px box. That overhang is deliberate - the hitbox is what the world collides
-     * with, the artwork is what the player sees, and a cat squeezed into its own collision box does
-     * not look like a cat.
-     */
+
     private void drawFrame(SpriteFrames frames, int index, float targetHeight) {
         drawFrame(frames, index, targetHeight, frames.bottomGap(index));
     }
 
-    /**
-     * As above, but the caller says how much of the transparent padding under the artwork to cancel.
-     *
-     * <p>Every clip cancels all of it, which is what puts the feet on {@code position.y}. The gas
-     * drift is the exception and passes 0, pinning the canvas bottom instead: its frames were cut
-     * with the artist's own layout intact, so the padding under each pose is not a mistake to
-     * correct but the drift itself. Cancelling it would leave a cloud that puffs and squashes on the
-     * spot, which is exactly what the four lines of arithmetic in {@link SpriteFrames} are there to
-     * prevent everywhere else.
-     */
+
     private void drawFrame(SpriteFrames frames, int index, float targetHeight, int bottomGap) {
         Texture picture = frames.get(index);
         float scale = frames.scale(targetHeight);
@@ -558,14 +464,12 @@ public class Player extends DynamicEntity {
         windY = y;
     }
 
-    /** The message the player should see ("Too cold..."), or null. Reading it clears it. */
     public String pollHint() {
         String h = hint;
         hint = null;
         return h;
     }
 
-    /** True once if the cloud condensed inside rock since the last call. */
     public boolean pollCondensedInWall() {
         boolean b = condensedInWall;
         condensedInWall = false;

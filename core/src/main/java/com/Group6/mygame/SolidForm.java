@@ -35,4 +35,9 @@ public class SolidForm implements CatForm {
     public boolean passesBars() {
         return false;
     }
+
+    @Override
+    public boolean isHeavy() {
+        return true;
+    }
 }

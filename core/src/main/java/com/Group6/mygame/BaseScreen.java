@@ -42,6 +42,15 @@ public abstract class BaseScreen implements Screen {
         stage = new Stage(new FitViewport(Main.WORLD_WIDTH, Main.WORLD_HEIGHT));
         skin = buildSkin();
         buildUi();
+        // Every button on every screen reports a ChangeEvent, and it bubbles up to the root on its way
+        // out. Catching it here means the click is played once for the whole game and no screen has to
+        // remember to do it - including buttons added later.
+        stage.getRoot().addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                Audio.click();
+            }
+        });
         Gdx.input.setInputProcessor(stage);
     }
 

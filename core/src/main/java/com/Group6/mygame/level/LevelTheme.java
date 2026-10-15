@@ -26,7 +26,12 @@ public final class LevelTheme {
     public static LevelTheme forLevel(int levelNumber) {
         switch (levelNumber) {
             case 2:
-                return new LevelTheme("4fbf86", "93e8bb", "86e2ab", "3c9b68", "b8f2d2", "f2876f", "8fdcf2");
+                // The greenhouse: deep emerald and dark teal over steel, with a neon mint accent. The
+                // bars stay pale on purpose - "mint" is how every level says "a puddle fits through
+                // here", and the cat should not have to relearn that in level 2. The hazard colour
+                // stays warm, because a warm spike against a green world is the one thing that cannot
+                // be mistaken for scenery.
+                return new LevelTheme("256b55", "4fb98a", "3f8f5f", "1c4a38", "a8e6c8", "f2876f", "5ff0c8");
             case 3:
                 return new LevelTheme("d85c46", "ffa48f", "f0a070", "b4643c", "ffc9b8", "ffd166", "ffd166");
             case 4:
