@@ -9,8 +9,6 @@ public class Main extends Game {
     public static final float WORLD_WIDTH = 1920f;
     public static final float WORLD_HEIGHT = 1080f;
 
-    // The cat's animation clips. Each group is one clip, loaded as a whole so that Player can treat
-    // "walk" as an array instead of a handful of separate textures. See SpriteFrames for the sizing.
     SpriteFrames catStandFrames;
     SpriteFrames catWalkFrames;
     SpriteFrames catJumpFrames;
@@ -54,8 +52,10 @@ public class Main extends Game {
             "gas-float-01.png", "gas-float-02.png", "gas-float-03.png",
             "gas-float-04.png", "gas-float-05.png");
 
-        level1Texture = new Texture("Level_1.jpg");
+        level1Texture = new Texture("Polymorphic Cat_ Neon Factory Adventure.png");
         level1Texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear); // smoother 0.5x downscale
+
+        Audio.init();                             // the music and effects outlive every screen
 
         setScreen(new MainMenuScreen(this));
     }
@@ -81,5 +81,6 @@ public class Main extends Game {
         catGasMorphFrames.dispose();
         catGasFloatFrames.dispose();
         level1Texture.dispose();
+        Audio.dispose();
     }
 }

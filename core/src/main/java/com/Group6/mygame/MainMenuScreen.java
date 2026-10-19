@@ -7,7 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
-/** Home page: Level_1.jpg cover background, title, main buttons and the team roster. */
+/** Home page: Level_1.jpg */
 public class MainMenuScreen extends BaseScreen {
 
     public MainMenuScreen(Main game) {
@@ -16,13 +16,14 @@ public class MainMenuScreen extends BaseScreen {
 
     @Override
     protected void buildUi() {
+        Audio.playMenuMusic();
         addCoverBackground(game.level1Texture);
 
         Table root = new Table();
         root.setFillParent(true);
-        root.center().pad(40f);
+        root.center().pad(60f);
 
-        root.add(new Label("Polymorphic Cat", skin, "title")).padBottom(80f).row();
+        //root.add(new Label("Polymorphic Cat", skin, "title")).padBottom(180f).row();
 
         TextButton startButton = new TextButton("Start Game", skin);
         root.add(startButton).width(260f).height(60f).padBottom(24f).row();

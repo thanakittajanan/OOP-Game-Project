@@ -37,7 +37,8 @@ public class LevelScreen extends BaseScreen {
 
     private final int levelNumber;
     private final boolean restoreCheckpoint;   // true after a game over: start from the last flag
-    private Texture backgroundTexture;
+    private Texture backgroundTexture;         // levels 2-4: one flat picture, drawn camera-locked
+    private ParallaxBackground parallax;       // level 1: two layers that slide at different speeds
     private Player player;
     private LevelWorld world;
 
@@ -66,8 +67,22 @@ public class LevelScreen extends BaseScreen {
 
     @Override
     protected void buildUi() {
-        backgroundTexture = new Texture("Level_" + levelNumber + ".jpg");
-        backgroundTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        Audio.playLevelMusic(levelNumber);      // only level 1 has a track so far
+
+        // Levels 1 and 2 have layered art; the rest keep their single flat picture. The far layer moves
+        // slower than the midground in both, which is the whole point of a parallax pair.
+        if (levelNumber == 1) {
+            parallax = new ParallaxBackground(
+                "Misty Industrial Sewer Depths-level 1 long shot.png", 0.15f,
+                "Futuristic Sewer Parallax Midground.png", 0.4f);
+        } else if (levelNumber == 2) {
+            parallax = new ParallaxBackground(
+                "FAR BACKGROUND for Level 2.png", 0.15f,
+                "MIDGROUND asset for Level 2.png", 0.4f);
+        } else {
+            backgroundTexture = new Texture("Level_" + levelNumber + ".jpg");
+            backgroundTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        }
 
         camera = new OrthographicCamera();
         worldViewport = new FitViewport(Main.WORLD_WIDTH, Main.WORLD_HEIGHT, camera);
@@ -145,12 +160,16 @@ public class LevelScreen extends BaseScreen {
         worldViewport.apply();
         batch.setProjectionMatrix(camera.combined);
 
-        // 1. background fills the view and moves with the camera
+        // 1. background fills the view
         float left = camera.position.x - Main.WORLD_WIDTH / 2f;
-        float bottom = camera.position.y - Main.WORLD_HEIGHT / 2f;
         batch.setColor(Color.WHITE);
         batch.begin();
-        batch.draw(backgroundTexture, left, bottom, Main.WORLD_WIDTH, Main.WORLD_HEIGHT);
+        if (parallax != null) {
+            parallax.render(batch, camera.position.x, camera.position.y);   // moves slower than the cat
+        } else {
+            float bottom = camera.position.y - Main.WORLD_HEIGHT / 2f;
+            batch.draw(backgroundTexture, left, bottom, Main.WORLD_WIDTH, Main.WORLD_HEIGHT);
+        }
 
         // 2. tiles, then 3. traps, monsters, cat
         world.renderTiles(batch, left, left + Main.WORLD_WIDTH);
@@ -230,6 +249,15 @@ public class LevelScreen extends BaseScreen {
         drawBoxes(map.getLiquidPassables());
         shapes.setColor(Color.YELLOW);
         drawBoxes(map.getVines());
+        // Gates and plates get their own colours: they are the two things in a level whose collision
+        // changes while it is running, so seeing them move is the point of looking.
+        shapes.setColor(Color.MAGENTA);
+        for (int pair = 0; pair < LevelMap.PLATE_PAIRS; pair++) drawBoxes(map.getGates(pair));
+        shapes.setColor(Color.PINK);
+        for (int i = 0; i < map.getPlates().size; i++) {
+            Rectangle r = map.getPlates().get(i).bounds;
+            shapes.rect(r.x, r.y, r.width, r.height);
+        }
         shapes.setColor(Color.RED);
         for (int i = 0; i < map.getHazards().size; i++) {
             Rectangle r = map.getHazards().get(i).getBounds();
@@ -272,5 +300,6 @@ public class LevelScreen extends BaseScreen {
         if (batch != null) { batch.dispose(); batch = null; }
         if (shapes != null) { shapes.dispose(); shapes = null; }
         if (backgroundTexture != null) { backgroundTexture.dispose(); backgroundTexture = null; }
+        if (parallax != null) { parallax.dispose(); parallax = null; }
     }
 }

@@ -3,12 +3,21 @@ package com.Group6.mygame.level;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 
-/** Tier 1. Walks back and forth on its patrol. Get past it by jumping over it. */
+/**
+ * Tier 1.
+ */
 public class Blob extends Monster {
     public static final float SPEED = 120f;
 
-    public Blob(LevelArt art, float centerX, float groundY, float range, Rectangle cat) {
+    /** Seconds per frame of the walk cycle. Six frames at this rate is one full stride per 0.72 s. */
+    private static final float FRAME_TIME = 0.12f;
+    /** Drawn height in level 1, a little taller than the 48 px hitbox so it reads clearly. */
+    private static final float DRAW_HEIGHT = 56f;
+
+    public Blob(LevelArt art, LevelMap map, float centerX, float groundY, float range, Rectangle cat) {
         super(art, centerX, groundY, 56f, 48f, range, cat);
+        this.map = map;
+        this.edgeAware = true;
     }
 
     @Override
@@ -24,6 +33,15 @@ public class Blob extends Monster {
 
     @Override
     public void render(SpriteBatch batch) {
+        if (art.hasSewerArt() || art.hasGreenhouseArt()) {
+            // The sheet is a real cycle, so the width of each frame is the squash - nothing else moves.
+            int frame = (int) (time / FRAME_TIME);
+            if (art.hasSewerArt()) art.sewer.drawSlime(batch, getCenterX(), bounds.y, DRAW_HEIGHT, frame, direction > 0);
+            else art.greenhouse.drawSlime(batch, getCenterX(), bounds.y, DRAW_HEIGHT, frame, direction > 0);
+            drawCommon(batch);
+            return;
+        }
+
         float x = bounds.x, y = bounds.y, w = bounds.width, h = bounds.height;
         float bob = (float) Math.sin(time * 6f) * 3f;
         // spikes on the back

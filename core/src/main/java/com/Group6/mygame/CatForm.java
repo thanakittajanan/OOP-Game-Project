@@ -7,8 +7,9 @@ package com.Group6.mygame;
  * instead of testing "am I liquid?" in each method. A third shape later (gas? ice?) is one new class,
  * not an edit to the player.
  *
- * <p>{@link com.Group6.mygame.level.LevelWorld} only needs {@link #passesBars()}: it decides whether
- * bars and grates go into the collision list this frame.
+ * <p>{@link com.Group6.mygame.level.LevelWorld} only needs {@link #passesBars()} and {@link #isHeavy()}:
+ * the first decides whether bars and grates go into the collision list this frame, the second whether
+ * a pressure plate counts as stepped on.
  */
 public interface CatForm {
     /** Name for the debug overlay. */
@@ -28,6 +29,18 @@ public interface CatForm {
 
     /** True if the form slips through bars and grates (the {@code '|'} tiles). */
     boolean passesBars();
+
+    /**
+     * True if the form has enough weight behind it to hold a pressure plate down (the {@code 'P'} and
+     * {@code 'p'} tiles). The real cat and the cat lying flat do; a puddle and a cloud do not.
+     *
+     * <p>This is what makes a plate a <em>solid-form</em> puzzle rather than a thing any shape can
+     * trip over, and it asks the same question {@link #canJump()} does - "is there a body here?" -
+     * in the one place where the answer matters again.
+     */
+    default boolean isHeavy() {
+        return false;
+    }
 
     /** True for a form that floats freely (no gravity, W/S move it up and down). Only the cloud. */
     default boolean canFly() {

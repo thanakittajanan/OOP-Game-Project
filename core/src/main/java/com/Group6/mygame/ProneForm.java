@@ -54,4 +54,13 @@ public class ProneForm implements CatForm {
     public boolean passesBars() {
         return false;
     }
+
+    /**
+     * A cat lying down is still a cat: same body, same weight. Pressing a plate flat on the floor is
+     * in fact the pose it is most natural in.
+     */
+    @Override
+    public boolean isHeavy() {
+        return true;
+    }
 }

@@ -19,6 +19,7 @@ public class LevelSelectScreen extends BaseScreen {
 
     @Override
     protected void buildUi() {
+        Audio.playMenuMusic();          // already playing from the main menu: carries on, no restart
         addCoverBackground(game.level1Texture);
 
         Table root = new Table();
@@ -30,7 +31,7 @@ public class LevelSelectScreen extends BaseScreen {
         for (int i = 0; i < LevelScreen.LEVEL_COUNT; i++) {
             final int levelNumber = i + 1;
             TextButton button = new TextButton("Level " + levelNumber + ": " + LEVEL_NAMES[i], skin);
-            root.add(button).width(460f).height(68f).padBottom(20f).row();
+            root.add(button).width(460f).height(40f).padBottom(20f).row();
             button.addListener(new ChangeListener() {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {

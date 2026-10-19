@@ -4,12 +4,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 
 /**
- * A fire basin that recharges the heat bar. Harmless to every form: it is the "lighter" in the heat
- * relay. The warm air above it reaches {@link #REACH_TILES} tiles up, so a cloud flying low over it
- * is charged without landing, while one cruising near the ceiling misses it.
- *
- * <p>Charging is continuous ({@link #HEAT_PER_SECOND} while the cat overlaps the zone) rather than a
- * one-shot pickup, so a brazier next to a checkpoint can never be used up and trap the player.
+ * A fire basin that recharges the heat bar.
  */
 public class Brazier extends Hazard {
     public static final float HEAT_PER_SECOND = 60f;

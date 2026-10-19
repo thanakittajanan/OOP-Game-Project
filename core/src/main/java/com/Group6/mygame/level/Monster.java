@@ -29,6 +29,16 @@ public abstract class Monster extends GameObject {
     protected float time;
     /** Height above the ground right now (only Hoppers leave the ground). */
     protected float airHeight;
+    /** The map, so a ground walker can look at the floor ahead of it. Null if it never needs to. */
+    protected LevelMap map;
+    /**
+     * True for monsters that walk on their feet and should turn at a ledge rather than step off it.
+     *
+     * <p>Deliberately opt-in and only set by {@link Blob}. A Hopper calls {@code patrol(0, delta)} while
+     * it is on the ground, so flipping its direction there would change which way it launches itself -
+     * that would quietly re-route the Hoppers already placed in levels 2 and 3.
+     */
+    protected boolean edgeAware;
 
     private final Rectangle hitbox = new Rectangle();
 
@@ -50,7 +60,7 @@ public abstract class Monster extends GameObject {
     /** 1, 2 or 3. */
     public abstract int getTier();
 
-    /** Moves along the patrol and turns around at either end. */
+    /** Moves along the patrol and turns around at either end, or at the edge of a platform. */
     protected void patrol(float speed, float delta) {
         float next = bounds.x + direction * speed * delta;
         if (next < minX) {
@@ -59,10 +69,24 @@ public abstract class Monster extends GameObject {
         } else if (next > maxX) {
             next = maxX;
             direction = -1;
+        } else if (edgeAware && airHeight <= 0f && !groundAhead(next)) {
+            next = bounds.x;                 // stop short of the drop and go back the other way
+            direction = -direction;
         }
         bounds.x = next;
         bounds.y = groundY + airHeight;
         position.set(bounds.x, bounds.y);
+    }
+
+    /**
+     * True if there is floor just beyond the monster's leading foot. The patrol ends are authored per
+     * monster, so this is a backstop for the case where a range is set too wide for the platform - it
+     * keeps a monster from walking off a ledge into a pit or through into the gap above one.
+     */
+    private boolean groundAhead(float nextX) {
+        if (map == null) return true;
+        float footX = direction > 0 ? nextX + bounds.width + 2f : nextX - 2f;
+        return map.isSolidAt(footX, groundY - 4f);
     }
 
     /** Slightly smaller than the picture so brushing past a monster is fair. */
@@ -106,7 +130,7 @@ public abstract class Monster extends GameObject {
         switch (tier) {
             case 2: return new Hopper(art, centerX, groundY, range, cat);
             case 3: return new Spitter(art, map, centerX, groundY, range, cat, sink);
-            default: return new Blob(art, centerX, groundY, range, cat);
+            default: return new Blob(art, map, centerX, groundY, range, cat);
         }
     }
 

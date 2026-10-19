@@ -25,10 +25,33 @@ public class LevelArt implements Disposable {
     public final TextureRegion star;
     public final LevelTheme theme;
 
+    /**
+     * Real artwork, or null. Level 1 sets this so its ground, spikes and slimes are drawn from the PNGs
+     * in {@code assets/}; levels 3-4 leave it null and keep the coloured shapes below.
+     */
+    public final SewerArt sewer;
+
+    /**
+     * Level 2's artwork, or null. The same idea as {@link #sewer} for a different set of sheets; the
+     * two are never both present, and each level falls back to the coloured shapes if its art is
+     * missing.
+     */
+    public final GreenhouseArt greenhouse;
+
     private final Array<Texture> textures = new Array<>();
 
     public LevelArt(LevelTheme theme) {
+        this(theme, 0);
+    }
+
+    /**
+     * @param levelNumber 1 to 4. Chooses which level's real artwork to load; 3 and 4 have none yet and
+     *                    build only the shapes.
+     */
+    public LevelArt(LevelTheme theme, int levelNumber) {
         this.theme = theme;
+        this.sewer = levelNumber == 1 ? new SewerArt() : null;
+        this.greenhouse = levelNumber == 2 ? new GreenhouseArt() : null;
 
         Pixmap p = new Pixmap(4, 4, Pixmap.Format.RGBA8888);
         p.setColor(Color.WHITE);
@@ -121,9 +144,38 @@ public class LevelArt implements Disposable {
         batch.setColor(Color.WHITE);
     }
 
+    /** True when this level draws itself from the level 1 PNG sheets rather than from coloured shapes. */
+    public boolean hasSewerArt() {
+        return sewer != null;
+    }
+
+    /**
+     * True when this level draws itself from the level 2 sheets. Also false when they were there but
+     * would not load, so a caller asking this question always gets a usable answer: if it is false the
+     * coloured shapes are the right thing to draw.
+     */
+    public boolean hasGreenhouseArt() {
+        return greenhouse != null && greenhouse.isReady();
+    }
+
+    /**
+     * Width over height of the checkpoint post. Both real-art levels cut the same object out of the
+     * same sheet, so the two answers agree; asking here saves every caller a second branch.
+     */
+    public float checkpointAspect() {
+        return greenhouse != null ? GreenhouseArt.CHECKPOINT_ASPECT : SewerArt.CHECKPOINT_ASPECT;
+    }
+
+    /** Width over height of the exit archway. See {@link #checkpointAspect()}. */
+    public float exitAspect() {
+        return greenhouse != null ? GreenhouseArt.EXIT_ASPECT : SewerArt.EXIT_ASPECT;
+    }
+
     @Override
     public void dispose() {
         for (int i = 0; i < textures.size; i++) textures.get(i).dispose();
         textures.clear();
+        if (sewer != null) sewer.dispose();
+        if (greenhouse != null) greenhouse.dispose();
     }
 }

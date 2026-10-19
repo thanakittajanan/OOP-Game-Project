@@ -5,27 +5,7 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.utils.Disposable;
 
-/**
- * One animation clip: its frames, plus the one measurement per frame that the drawing code needs to
- * keep the cat's feet on the floor.
- *
- * <p>The frames were exported one file each and the artwork inside a canvas is rarely flush with the
- * edges: the transparent rows under the cat range from 4 to 63 px across the jump clip. Drawing the
- * canvas bottom on the hitbox bottom would make the cat float by exactly that much, so at load time
- * this class scans the alpha channel once and remembers how many transparent rows sit under the
- * artwork ({@link #bottomGap(int)}).
- *
- * <p>The scan is why this class opens the files itself instead of taking ready-made {@link Texture}s:
- * once a texture has been uploaded its pixels are gone from the CPU side.
- *
- * <p>Frames are scaled by <b>canvas</b> height, never by the artwork's own height. The canvases in a
- * clip are all the same size by construction, so that holds the cat's size rock steady from frame to
- * frame, and lets the pose move around inside the canvas the way the artist drew it - a tucked jump
- * frame really is shorter than a stretched one, and a mid-melt frame really is flatter. Normalising
- * each frame by its own artwork height instead would cancel exactly that, and worse, it would make
- * the drawn size jump wherever the artwork's height is not monotonic (the melt frames go 212, 217,
- * 162, 183, 132, 117 source pixels).
- */
+
 public final class SpriteFrames implements Disposable {
     /** Alpha above this counts as artwork; low enough to keep soft antialiased edges. */
     private static final int ALPHA_THRESHOLD = 8;
