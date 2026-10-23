@@ -42,7 +42,6 @@ import com.badlogic.gdx.utils.Disposable;
  * before. The art is an upgrade, not a dependency.
  */
 public class GreenhouseArt implements Disposable {
-
     private static final String PIPES_PNG = "Greenhouse Pipes.png";
     private static final String GATE_PNG = "Sci-Fi Moss Gate Asset Sheet.png";
     private static final String VINES_PNG = "Three Stylized Vines on Transparency.png";
@@ -73,7 +72,6 @@ public class GreenhouseArt implements Disposable {
      * a riveted seam, which reads as a stacked steel beam - which is what the wall is.
      */
     private static final int STONE_X = 367, STONE_Y = 131, STONE_W = 121, STONE_H = 103;
-
 
     private static final int[][] PIPES = {
         {187, 743, 145, 158},   // elbow
@@ -210,7 +208,6 @@ public class GreenhouseArt implements Disposable {
     public boolean isReady() {
         return ready;
     }
-
 
     // ---------------------------------------------------------------- terrain
 

@@ -24,7 +24,7 @@ public class MorphState implements PlayerState {
     private CatForm from;
     private CatForm to;
 
-    /** Records the two ends of the morph. Called before {@link Player#changeState}. */
+    /** Records the two ends of the morph. Called just before the player enters this state. */
     void begin(CatForm from, CatForm to) {
         this.from = from;
         this.to = to;
@@ -46,9 +46,11 @@ public class MorphState implements PlayerState {
 
         if (elapsed >= DURATION) {
             if (p.getForm().canFly()) {
-                p.changeState(p.gasState);
+                p.toGas();
+            } else if (p.isOnGround()) {
+                p.toGrounded();
             } else {
-                p.changeState(p.isOnGround() ? p.groundedState : p.fallingState);
+                p.toFalling();
             }
         }
     }

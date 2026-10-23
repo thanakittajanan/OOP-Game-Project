@@ -20,9 +20,9 @@ public class GroundedState implements PlayerState {
         p.moveAndCollide(delta);
 
         if (jumped) {
-            p.changeState(p.jumpingState);
+            p.toJumping();
         } else if (!p.isOnGround()) {
-            p.changeState(p.fallingState);      // walked off a ledge
+            p.toFalling();      // walked off a ledge
         }
     }
 

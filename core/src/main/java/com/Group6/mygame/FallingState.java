@@ -13,7 +13,7 @@ public class FallingState implements PlayerState {
         p.moveAndCollide(delta);
 
         if (p.isOnGround()) {
-            p.changeState(p.groundedState);
+            p.toGrounded();
         }
     }
 

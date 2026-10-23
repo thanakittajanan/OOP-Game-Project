@@ -32,7 +32,6 @@ import com.badlogic.gdx.utils.Disposable;
  * </ul>
  */
 public class SewerArt implements Disposable {
-
     private static final String PLATFORM_PNG = "Industrial Sewer Platform Tile.png";
     private static final String SPIKE_PNG = "Cartoon Spike Trap Tileset Sprite Sheet.png";
     private static final String SLIME_PNG = "Cute Dark Slime Sprite Sheet.png";

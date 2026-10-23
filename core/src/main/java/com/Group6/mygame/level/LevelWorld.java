@@ -27,7 +27,6 @@ import com.badlogic.gdx.utils.Disposable;
  * </ol>
  */
 public class LevelWorld implements Disposable {
-
     public enum Status { PLAYING, CLEARED, DEAD }
 
     /** Seconds the cat cannot be hurt again after a hit (Member 3 may replace this with the real i-frames). */
@@ -82,12 +81,7 @@ public class LevelWorld implements Disposable {
         this.player = player;
         // Levels 1 and 2 draw their ground and traps from PNG sheets; 3 and 4 keep the coloured shapes.
         this.art = new LevelArt(LevelTheme.forLevel(levelNumber), levelNumber);
-        this.map = new LevelMap(levelNumber, art, player.getBounds(), new Monster.HazardSink() {
-            @Override
-            public void add(Hazard hazard) {
-                spawned.add(hazard);
-            }
-        });
+        this.map = new LevelMap(levelNumber, art, player.getBounds(), hazard -> spawned.add(hazard));
         checkpointReached = new boolean[map.getCheckpoints().size];
         hintFired = new boolean[map.getHints().size];
         coreTaken = new boolean[map.getCores().size];
@@ -227,7 +221,8 @@ public class LevelWorld implements Disposable {
      * Hold W while touching a vine to climb it. At the top the cat gets a small hop so it can step onto
      * the ledge (hold A or D toward the vine).
      *
-     * <p>TODO(Member 1): this is a stand-in. A proper ClimbingState in the State Pattern would be cleaner.
+     * <p>Design note: climbing is handled here rather than as a {@code ClimbingState} because it needs the
+     * level's vine list. Moving it into the State pattern is the natural next refactor.
      */
     private void applyVineClimb() {
         if (!Gdx.input.isKeyPressed(Input.Keys.W) || isLiquid() || isGas()) return;   // W flies a cloud up

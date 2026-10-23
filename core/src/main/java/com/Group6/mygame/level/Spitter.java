@@ -42,18 +42,18 @@ public class Spitter extends Monster {
 
     @Override
     public void update(float delta) {
-        time += delta;
+        advanceTime(delta);
         reload -= delta;
 
         if (windup > 0f) {                       // mouth is glowing: stand still, then fire
             windup -= delta;
             if (windup <= 0f) {
-                sink.add(new Fireball(art, map, getCenterX() + direction * 34f, groundY + FIREBALL_HEIGHT, direction));
+                sink.add(new Fireball(art, map, getCenterX() + getDirection() * 34f, groundY + FIREBALL_HEIGHT, getDirection()));
                 reload = RELOAD;
             }
             patrol(0f, delta);
         } else if (canSeeCat()) {                 // turn to face the cat and start the wind-up when reloaded
-            direction = catCenterX() < getCenterX() ? -1 : 1;
+            faceCat();
             if (reload <= 0f) windup = WINDUP;
             patrol(0f, delta);
         } else {
@@ -70,11 +70,11 @@ public class Spitter extends Monster {
         // body
         art.draw(batch, art.white, 0.07f, 0.03f, 0.03f, 1f, x, y, w, h);
         // eyes
-        float ex = x + w / 2f + direction * 8f;
+        float ex = x + w / 2f + getDirection() * 8f;
         art.draw(batch, art.white, 1f, 0.82f, 0.4f, 1f, ex - 18f, y + 40f, 10f, 7f);
         art.draw(batch, art.white, 1f, 0.82f, 0.4f, 1f, ex + 8f, y + 40f, 10f, 7f);
         // mouth: dim normally, bright while winding up
-        float mouthX = direction > 0 ? x + w - 28f : x + 4f;
+        float mouthX = getDirection() > 0 ? x + w - 28f : x + 4f;
         float mouthY = y + FIREBALL_HEIGHT - 6f;   // the mouth sits where the fireball comes out
         if (windup > 0f) {
             art.draw(batch, art.glow, 1f, 0.7f, 0.35f, 0.8f, mouthX - 30f, mouthY - 30f, 84f, 74f);

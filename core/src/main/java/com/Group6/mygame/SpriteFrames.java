@@ -5,7 +5,14 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.utils.Disposable;
 
-
+/**
+ * One animation clip: a list of textures that share a canvas size, plus how many transparent rows
+ * sit under the artwork in each frame.
+ *
+ * <p>The gap matters because the pose moves inside a fixed canvas. Drawing every frame sunk by its
+ * own {@link #bottomGap} keeps the cat's feet on the bottom of its hitbox whatever the pose.
+ * The object owns its textures; call {@link #dispose()} when the game ends.
+ */
 public final class SpriteFrames implements Disposable {
     /** Alpha above this counts as artwork; low enough to keep soft antialiased edges. */
     private static final int ALPHA_THRESHOLD = 8;

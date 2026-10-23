@@ -1,94 +1,86 @@
-<<<<<<< HEAD
 # Polymorphic Cat
 
-A 2D platformer game built with Java and libGDX, inspired by *Cats are Liquid*. Designed as an Object-Oriented Programming (OOP) course project demonstrating modular design, state patterns, and physics interactions.
+A 2D puzzle-platformer built with Java and [libGDX](https://libgdx.com/), inspired by *Cats are Liquid*.
+Built as an Object-Oriented Programming course project (Group 6): the cat morphs between **solid, prone,
+liquid and gas** forms, and each form changes how it moves and which obstacles it can pass.
 
----
+## Quick start
 
-## Project Overview
+| I want to...                | Do this                                                                 |
+|-----------------------------|-------------------------------------------------------------------------|
+| Play the pre-built game     | `java -jar "Polymorphic Cat-1.0.0.jar"` (needs Java 17 or newer)        |
+| Run from source             | `./gradlew lwjgl3:run` (Windows: `gradlew.bat lwjgl3:run`)              |
+| Build a fresh runnable jar  | `./gradlew lwjgl3:jar` -> `lwjgl3/build/libs/Polymorphic Cat-1.0.0.jar` |
 
-**Polymorphic Cat** is a 2D puzzle-platformer where players control a morphing cat navigating through challenging obstacles, traps, and platforming puzzles. The core mechanic revolves around switching between different physical states to alter movement speeds, jump physics, and collision bounds.
+The `.jar` is self-contained: it bundles the game code, libGDX, the native libraries for Windows, macOS and
+Linux, and every asset (images and sound).
 
----
+## Controls
 
-##  Tech Stack & Tools
+| Key            | Action                                              |
+|----------------|-----------------------------------------------------|
+| `A` / `D`      | Move                                                |
+| `Space`        | Jump (solid form only); also climbs vines with `W`  |
+| `Shift`        | Run                                                 |
+| hold `S`       | Lie prone (fits through low gaps)                   |
+| `Q`            | Liquid form on / off (slips through bars and grates)|
+| `E`            | Gas form on / off, then `W A S D` to fly            |
+| `Esc`          | Back to the level list                              |
+| `F3` / `F4`    | Debug view / unlock gas form (developer shortcuts)  |
 
-* **Language:** Java (JDK 17)
-* **Framework:** libGDX 1.14.2
-* **Build Tool:** Gradle
-* **Level Design:** Tiled Map Editor (`.tmx`)
-* **Version Control:** Git & GitHub
+## Object-oriented design at a glance
 
----
+The full explanation, with the class for every concept, is in **[docs/OOP_CONCEPTS.md](docs/OOP_CONCEPTS.md)**.
 
-##  Team Division
+```
+GameObject (abstract)                 PlayerState (interface)          CatForm (interface)
+ +-- DynamicEntity (abstract)          +-- GroundedState                +-- SolidForm
+ |    +-- Player                       +-- JumpingState                 +-- ProneForm
+ +-- Hazard (abstract)                 +-- FallingState                 +-- LiquidForm
+ |    +-- SpikeStrip, SawBlade, ...     +-- MorphState                   +-- GasForm
+ +-- Monster (abstract)                +-- GasState
+      +-- Blob, Hopper, Spitter
+```
 
-### Member 1: Physics & Movement（pete)
-1. Player input handling (A/D movement, Space bar jump).
- 2.Gravity calculations and velocity handling.
- 3.Terrain AABB collision detection and wall-stick prevention.
+- **Abstraction / inheritance:** `GameObject` -> `DynamicEntity` -> `Player`; `Hazard` and `Monster` hierarchies.
+- **Polymorphism:** the game loop calls `update`, `render` and `touches` on `GameObject` / `Hazard` without
+  knowing the concrete type.
+- **Encapsulation:** state is private; other classes use intent-revealing methods (`HeatMeter.drain`,
+  `Monster.faceCat`, `Player.toGrounded`).
+- **Design patterns:** State (`PlayerState`), Strategy (`CatForm`), Factory Method (`Monster.create`),
+  Template Method (`BaseScreen`).
 
-### Member 2: Level & Map System(shiro)
- 1.Parsing Tiled `.tmx` maps using `TmxMapLoader`.
- 2.Rendering level environments via `OrthogonalTiledMapRenderer`.
- 3.Camera tracking and object layer hazard processing (`Spike`, `Portal`).
+## Project layout
 
-###  Member 3: Systems, Abilities & UI (Joseph - Lead)
-1.Base project structure initialization, Gradle setup, and Git workflow.
-2.Core State Pattern for cat form morphing (Liquid form / Solid form).
-3.Health system implementation (`takeDamage`), invincibility frames, and death logic.
-4.Screen navigation (`GameScreen`) and HUD UI drawing.
+```
+core/src/main/java/com/Group6/mygame/          game logic (shared by all platforms)
+    Player, DynamicEntity, GameObject            the cat and its physics
+    CatForm + Solid/Prone/Liquid/GasForm         Strategy pattern
+    PlayerState + Grounded/Jumping/...State      State pattern
+    BaseScreen + MainMenu/LevelSelect/LevelScreen   UI screens
+core/src/main/java/com/Group6/mygame/level/    levels, hazards, monsters, tile map, art
+lwjgl3/                                        desktop launcher and jar packaging
+assets/                                        images, music and sound effects
+docs/                                          design notes (OOP concepts, physics, gas form)
+```
 
----
+## Team
 
-##  Completed Setup
+| Member | Area                                                           |
+|--------|----------------------------------------------------------------|
+| Pete   | Physics and movement, collision (`docs/member1-physics.md`)    |
+| Shiro  | Level and map system, hazards                                  |
+| Joseph | Cat forms (State/Strategy), health, screens and HUD (lead)     |
+| Patrik | _(add your area here)_                                         |
 
-- [x] Base libGDX desktop project initialized.
-- [x] Abstract base class `GameObject.java` defined.
-- [x] Player subclass `Player.java` created with basic interface signatures (`takeDamage`, `getPosition`, `getHealth`).
-- [x] Basic game rendering loop (`GameScreen.java`) configured.
-- [x] Git repository set up with main and feature branches.
+## Coding conventions
 
----
+- Classes `PascalCase`, methods and variables `camelCase`, constants `UPPER_SNAKE_CASE`.
+- 4-space indentation, LF line endings, UTF-8 (enforced by `.editorconfig`).
+- Every class has a Javadoc comment saying what it is for; non-obvious members explain *why*, not *what*.
+- Fields are `private` unless a subclass genuinely needs them.
+- Package path: `com.Group6.mygame`.
 
-## Code Naming Conventions
+## Tech stack
 
-Classes: `PascalCase` (e.g., `GameObject`, `Player`)
-Methods / Variables: `camelCase` (e.g., `takeDamage()`, `currentHealth`)
-Constants:`UPPER_SNAKE_CASE` (e.g., `MAX_HEALTH`, `GRAVITY`)
-Package Path: `com.Group6.mygame`
-
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
-
-This project was generated with a template including simple application launchers and a main class extending `Game` that sets the first screen.
-
-## Platforms
-
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
-
-## Gradle
-
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
-
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
-
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
-=======
-This is GAME project for OOP lecture
->>>>>>> 7418314dff91e9c5258eb74f707e03aaa8907694
+Java 17, libGDX 1.14.2, Gradle (wrapper included), LWJGL3 desktop backend, Git and GitHub.

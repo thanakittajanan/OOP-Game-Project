@@ -11,7 +11,6 @@ import com.badlogic.gdx.math.Rectangle;
  * <p>The picture comes from the tile map; this class only supplies the box and the rule.
  */
 public class FrostPipe extends Hazard {
-
     public FrostPipe(LevelArt art, float tileX, float tileY, float tileSize) {
         super(art, tileX, tileY, tileSize, tileSize);
     }

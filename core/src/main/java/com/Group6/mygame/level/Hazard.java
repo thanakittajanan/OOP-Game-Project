@@ -15,7 +15,6 @@ import com.badlogic.gdx.math.Rectangle;
  * </pre>
  */
 public abstract class Hazard extends GameObject {
-
     /** What happens to the cat after it loses 1 HP. */
     public enum Effect {
         /** Back to the last checkpoint (pits, spikes, flames, falling spikes). */

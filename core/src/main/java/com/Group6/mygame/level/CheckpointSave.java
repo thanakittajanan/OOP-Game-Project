@@ -1,5 +1,10 @@
 package com.Group6.mygame.level;
 
+/**
+ * Remembers the last checkpoint of the level being played, so a game over can restart from the
+ * flag instead of the start. Static on purpose: it must outlive the {@code LevelScreen} that is
+ * disposed and rebuilt on every restart. Only one level is remembered at a time.
+ */
 public final class CheckpointSave {
     private static int level = -1;
     private static float x, y;

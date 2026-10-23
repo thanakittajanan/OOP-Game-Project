@@ -8,7 +8,21 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 
-
+/**
+ * The cat: the one object the person plays.
+ *
+ * <p>It is built from two design patterns, so this class does not need big if/else chains:
+ * <ul>
+ *   <li><b>State pattern</b> - how the cat is <em>moving</em> ({@link GroundedState},
+ *       {@link JumpingState}, {@link FallingState}, {@link MorphState}, {@link GasState}). The
+ *       current {@link PlayerState} runs the frame; see {@link PlayerState} for the diagram.</li>
+ *   <li><b>Strategy pattern</b> - what the cat's <em>body</em> is ({@link CatForm}: solid, liquid,
+ *       prone, gas). Speeds, height and abilities are read from the current form.</li>
+ * </ul>
+ *
+ * <p>Physics (gravity, AABB collision) comes from {@link DynamicEntity}; this class adds input,
+ * form switching, health and the sprite animation.
+ */
 public class Player extends DynamicEntity {
     public static final float GROUND_ACCEL = 2000f;
     public static final float GROUND_FRICTION = 2400f;
@@ -18,42 +32,39 @@ public class Player extends DynamicEntity {
     public static final float JUMP_SPEED = 500f;
     public static final float JUMP_CUT_SPEED = 200f;
 
+    /** Hitbox width, the same in every form (only the height changes). */
     private static final float BODY_WIDTH = 90f;
 
-
+    // Seconds each animation frame stays on screen.
     private static final float WALK_FRAME_TIME = 0.10f;
     private static final float RUN_FRAME_TIME = 0.06f;
     private static final float LIQUID_FRAME_TIME = 0.09f;
     private static final float PRONE_FRAME_TIME = 0.22f;   // a two-pose shuffle: keep it lazy
     private static final float GAS_FRAME_TIME = 0.14f;     // a drift, so slower than a walk
-    private static final float MOVING_SPEED_THRESHOLD = 10f;   // below this the cat counts as standing still
 
+    /** Below this horizontal speed the cat counts as standing still. */
+    private static final float MOVING_SPEED_THRESHOLD = 10f;
 
     /** Where the jump clip splits: frames [0,3) while rising, frames [3,6) while falling. */
     private static final int JUMP_RISE_FRAMES = 3;
 
+    /** Height the picture is drawn at while melting; the liquid hitbox is shorter than the drawing. */
     private static final float MORPH_LIQUID_HEIGHT = 65f;
 
-
+    /** Drawn height of the lying-down clip (the hitbox is {@link ProneForm#HEIGHT}). */
     private static final float PRONE_DRAW_HEIGHT = 90f;
 
-
+    /** The two crawl poses inside the prone clip; the cat alternates between them while it moves. */
     private static final int PRONE_CRAWL_FROM = 5;
     private static final int PRONE_CRAWL_TO = 4;
 
-
+    /** Drawn height of the cloud; see {@link GasForm#HEIGHT} for why the hitbox differs. */
     private static final float GAS_DRAW_HEIGHT = 106.5f;
 
-    // Which clip is playing; a switch resets animTimer so every animation starts on frame 0.
-    private static final int CLIP_STAND = 0;
-    private static final int CLIP_WALK = 1;
-    private static final int CLIP_RUN = 2;
-    private static final int CLIP_JUMP_RISE = 3;
-    private static final int CLIP_JUMP_FALL = 4;
-    private static final int CLIP_LIQUID = 5;
-    private static final int CLIP_MORPH = 6;
-    private static final int CLIP_PRONE = 7;
-    private static final int CLIP_GAS = 8;
+    /** Which animation clip is playing. A switch resets {@code animTimer} so every clip starts on frame 0. */
+    private enum Clip {
+        STAND, WALK, RUN, JUMP_RISE, JUMP_FALL, LIQUID, MORPH, PRONE, GAS
+    }
 
     private int health = 3;
 
@@ -74,13 +85,12 @@ public class Player extends DynamicEntity {
     private final SpriteFrames standFrames, walkFrames, jumpFrames, liquidWalkFrames, morphFrames, proneFrames;
     private final SpriteFrames gasMorphFrames, gasFloatFrames;
 
-
+    // Strategy pattern: one object per body; `form` points at the one in use.
     private final CatForm solidForm = new SolidForm();
     private final CatForm liquidForm = new LiquidForm();
     private final CatForm proneForm = new ProneForm();
     private final CatForm gasForm = new GasForm();
     private CatForm form = solidForm;
-
 
     private boolean wantsLiquid = false;
     private boolean wantsGas = false;
@@ -91,31 +101,34 @@ public class Player extends DynamicEntity {
     private boolean moving = false;
     private float moveInput = 0f;       // -1 = left, 0 = none, +1 = right
     private float airSpeed = SolidForm.WALK_SPEED;   // top horizontal speed in the air = the speed we had at takeoff
-    private int clip = -1;
+    private Clip clip;                  // null until the first frame
     private float animTimer = 0;
 
     // State Pattern: the states hold no data, so each player just owns one of each.
-    final PlayerState groundedState = new GroundedState();
-    final PlayerState jumpingState = new JumpingState();
-    final PlayerState fallingState = new FallingState();
-    final MorphState morphState = new MorphState();
-    final PlayerState gasState = new GasState();
+    private final PlayerState groundedState = new GroundedState();
+    private final PlayerState jumpingState = new JumpingState();
+    private final PlayerState fallingState = new FallingState();
+    private final MorphState morphState = new MorphState();
+    private final PlayerState gasState = new GasState();
     private PlayerState state;
 
-    public Player(float x, float y, SpriteFrames stand, SpriteFrames walk, SpriteFrames jump,
-                  SpriteFrames liquidWalk, SpriteFrames morph, SpriteFrames prone,
-                  SpriteFrames gasMorph, SpriteFrames gasFloat) {
+    /**
+     * @param x          spawn x (bottom-left corner of the hitbox)
+     * @param y          spawn y
+     * @param animations the shared animation clips, loaded once by {@link Main}
+     */
+    public Player(float x, float y, CatAnimations animations) {
         super(x, y, BODY_WIDTH, SolidForm.HEIGHT);
-        standFrames = stand;
-        walkFrames = walk;
-        jumpFrames = jump;
-        liquidWalkFrames = liquidWalk;
-        morphFrames = morph;
-        proneFrames = prone;
-        gasMorphFrames = gasMorph;
-        gasFloatFrames = gasFloat;
+        standFrames = animations.stand();
+        walkFrames = animations.walk();
+        jumpFrames = animations.jump();
+        liquidWalkFrames = animations.liquidWalk();
+        morphFrames = animations.morph();
+        proneFrames = animations.prone();
+        gasMorphFrames = animations.gasMorph();
+        gasFloatFrames = animations.gasFloat();
 
-        catSprite = new Sprite(stand.get(0));
+        catSprite = new Sprite(standFrames.get(0));
         catSprite.setPosition(x, y);
 
         // Start in the air: if the spawn point is above the floor the cat drops in,
@@ -142,11 +155,29 @@ public class Player extends DynamicEntity {
     // ===================== State Pattern ===================== //
 
     /** Switches to another state (calls exit on the old one and enter on the new one). */
-    void changeState(PlayerState next) {
+    private void changeState(PlayerState next) {
         if (state == next) return;
         if (state != null) state.exit(this);
         state = next;
         state.enter(this);
+    }
+
+    // Transitions the states ask for. States say WHERE to go; only the Player knows which object that is.
+
+    void toGrounded() {
+        changeState(groundedState);
+    }
+
+    void toJumping() {
+        changeState(jumpingState);
+    }
+
+    void toFalling() {
+        changeState(fallingState);
+    }
+
+    void toGas() {
+        changeState(gasState);
     }
 
     /** Name of the current state, for the debug view. */
@@ -160,7 +191,7 @@ public class Player extends DynamicEntity {
         return form;
     }
 
-
+    /** Swaps the body: resizes the hitbox to the new form. Called by {@link MorphState#enter}. */
     void setForm(CatForm next) {
         if (form.canFly() && !next.canFly()) velocity.scl(0.25f);   // a cloud's drift must not launch the cat
         form = next;
@@ -168,7 +199,10 @@ public class Player extends DynamicEntity {
         syncBounds();
     }
 
-
+    /**
+     * Reads Q / E / S, decides which form the cat wants to be in and starts a morph if that differs
+     * from the current one. Refuses to grow into a space the taller body would not fit.
+     */
     private void updateForm() {
         if (state == morphState) return;
 
@@ -274,7 +308,7 @@ public class Player extends DynamicEntity {
         accelerateX(readMoveInput(), airSpeed, AIR_ACCEL, AIR_FRICTION, delta);
     }
 
-
+    /** Free flight for the cloud: WASD steers, wind from fans adds to it (more so as the heat runs low). */
     void applyGasControl(float delta) {
         float ix = readMoveInput();
         float iy = 0f;
@@ -292,7 +326,7 @@ public class Player extends DynamicEntity {
         velocity.y = approach(velocity.y, targetY, GasForm.FLY_ACCEL * delta);
     }
 
-    //Speeds up toward input maxSpeed, or slows to a stop with friction when no key is held.
+    /** Speeds up toward {@code input * maxSpeed}, or slows to a stop with friction when no key is held. */
     private void accelerateX(float input, float maxSpeed, float accel, float friction, float delta) {
         if (input == 0f) {
             velocity.x = approach(velocity.x, 0f, friction * delta);
@@ -318,8 +352,7 @@ public class Player extends DynamicEntity {
         onGround = false;
     }
 
-    //Refreshes the stance flags
-
+    /** Refreshes the stance flags that ground control needs. */
     private void updateStance() {
         running = onGround && Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT);
     }
@@ -329,7 +362,7 @@ public class Player extends DynamicEntity {
     private void updateAnimation(float delta) {
         moving = moveInput != 0f || Math.abs(velocity.x) > MOVING_SPEED_THRESHOLD;
 
-        int next = pickClip();
+        Clip next = pickClip();
         if (next != clip) {          // a new animation always starts on its first frame
             clip = next;
             animTimer = 0f;
@@ -337,30 +370,29 @@ public class Player extends DynamicEntity {
         animTimer += delta;
 
         switch (clip) {
-            case CLIP_MORPH:
+            case MORPH:
                 drawMorphFrame();
                 break;
-            case CLIP_LIQUID:
+            case LIQUID:
                 drawFrame(liquidWalkFrames, moving ? elapsedFrames(LIQUID_FRAME_TIME) : 0, liquidForm.height());
                 break;
-            case CLIP_JUMP_RISE:
-                drawFrame(jumpFrames, clipFrame(1f - velocity.y / JUMP_SPEED, 0 , JUMP_RISE_FRAMES), solidForm.height());
+            case JUMP_RISE:
+                drawFrame(jumpFrames, clipFrame(1f - velocity.y / JUMP_SPEED, 0, JUMP_RISE_FRAMES), solidForm.height());
                 break;
-            case CLIP_JUMP_FALL:
+            case JUMP_FALL:
                 drawFrame(jumpFrames,
                     clipFrame(-velocity.y / JUMP_SPEED, JUMP_RISE_FRAMES, jumpFrames.size()), solidForm.height());
                 break;
-            case CLIP_PRONE:
+            case PRONE:
                 drawFrame(proneFrames, proneCrawlFrame(), PRONE_DRAW_HEIGHT);
                 break;
-            case CLIP_GAS:
-
+            case GAS:
                 drawFrame(gasFloatFrames, elapsedFrames(GAS_FRAME_TIME), GAS_DRAW_HEIGHT, 0);
                 break;
-            case CLIP_RUN:
+            case RUN:
                 drawFrame(walkFrames, elapsedFrames(RUN_FRAME_TIME), solidForm.height());
                 break;
-            case CLIP_WALK:
+            case WALK:
                 drawFrame(walkFrames, elapsedFrames(WALK_FRAME_TIME), solidForm.height());
                 break;
             default:
@@ -377,17 +409,17 @@ public class Player extends DynamicEntity {
     }
 
     /** Which animation the cat's situation calls for this frame. */
-    private int pickClip() {
-        if (state == morphState) return CLIP_MORPH;
-        if (form == gasForm) return CLIP_GAS;
-        if (form == liquidForm) return CLIP_LIQUID;
-        if (form == proneForm) return CLIP_PRONE;
-        if (!onGround) return velocity.y > 0f ? CLIP_JUMP_RISE : CLIP_JUMP_FALL;
-        if (!moving) return CLIP_STAND;
-        return running ? CLIP_RUN : CLIP_WALK;
+    private Clip pickClip() {
+        if (state == morphState) return Clip.MORPH;
+        if (form == gasForm) return Clip.GAS;
+        if (form == liquidForm) return Clip.LIQUID;
+        if (form == proneForm) return Clip.PRONE;
+        if (!onGround) return velocity.y > 0f ? Clip.JUMP_RISE : Clip.JUMP_FALL;
+        if (!moving) return Clip.STAND;
+        return running ? Clip.RUN : Clip.WALK;
     }
 
-
+    /** The lying-down cat holds one pose when still and alternates two while it crawls. */
     private int proneCrawlFrame() {
         if (!moving) return PRONE_CRAWL_FROM;
         return elapsedFrames(PRONE_FRAME_TIME) % 2 == 0 ? PRONE_CRAWL_FROM : PRONE_CRAWL_TO;
@@ -396,13 +428,13 @@ public class Player extends DynamicEntity {
     private int elapsedFrames(float secondsPerFrame) {
         return (int) (animTimer / secondsPerFrame);
     }
-    //
+    /** Maps {@code progress} (0..1) onto the frames {@code [from, to)} of a clip. */
     private static int clipFrame(float progress, int from, int to) {
         float p = Math.max(0f, Math.min(progress, 1f));
         int step = Math.min((int) (p * (to - from)), to - from - 1);
         return from + step;
     }
-    //That height is the drawing height, not the hitbox height
+    /** Draws the current morph frame, growing or shrinking the picture from one form's height to the other's. */
     private void drawMorphFrame() {
         float progress = morphState.progress();
         SpriteFrames clip = morphClip();
@@ -415,13 +447,14 @@ public class Player extends DynamicEntity {
         drawFrame(clip, index, from + (to - from) * progress);
     }
 
-
+    /** Which clip plays the morph between the two forms: gas, liquid, or the lying-down one. */
     private SpriteFrames morphClip() {
         CatForm from = morphState.getFrom(), to = morphState.getTo();
         if (from == gasForm || to == gasForm) return gasMorphFrames;
         return (from == liquidForm || to == liquidForm) ? morphFrames : proneFrames;
     }
 
+    /** Height the picture is drawn at for a form. This is the drawing height, not the hitbox height. */
     private float drawnHeightOf(CatForm target) {
         if (target == liquidForm) return MORPH_LIQUID_HEIGHT;
         if (target == proneForm) return PRONE_DRAW_HEIGHT;
@@ -429,12 +462,12 @@ public class Player extends DynamicEntity {
         return target.height();
     }
 
-
+    /** Draws frame {@code index} of a clip, standing on the hitbox bottom, {@code targetHeight} tall. */
     private void drawFrame(SpriteFrames frames, int index, float targetHeight) {
         drawFrame(frames, index, targetHeight, frames.bottomGap(index));
     }
 
-
+    /** As above, with an explicit count of transparent rows to sink below the hitbox bottom. */
     private void drawFrame(SpriteFrames frames, int index, float targetHeight, int bottomGap) {
         Texture picture = frames.get(index);
         float scale = frames.scale(targetHeight);
@@ -476,11 +509,11 @@ public class Player extends DynamicEntity {
         return b;
     }
 
-    // ===================== Interface called for member 2 (trap damage) ===================== //
+    // ===================== Health ===================== //
 
+    /** Removes {@code damage} hit points. Called by {@code LevelWorld} when a hazard touches the cat. */
     public void takeDamage(int damage) {
         this.health -= damage;
-        System.out.println("Player took damage! Current HP: " + health);
     }
 
     public int getHealth() {

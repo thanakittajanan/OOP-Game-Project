@@ -22,7 +22,6 @@ import com.badlogic.gdx.audio.Sound;
  * goes quiet. That matters because the assets folder is hand-managed.
  */
 public final class Audio {
-
     /** Music sits well under the effects, so a checkpoint never gets swallowed by the backing track. */
     private static final float MUSIC_VOLUME = 0.40f;
     private static final float SFX_VOLUME = 0.75f;

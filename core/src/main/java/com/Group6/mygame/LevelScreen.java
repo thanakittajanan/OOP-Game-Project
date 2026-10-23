@@ -130,18 +130,8 @@ public class LevelScreen extends BaseScreen {
             skin, "roster"));
         stage.addActor(help);
 
-        addBackButton(new Runnable() {
-            @Override
-            public void run() {
-                backToLevelSelect();
-            }
-        });
-        addKeyboardShortcuts(null, new Runnable() {
-            @Override
-            public void run() {
-                backToLevelSelect();
-            }
-        });
+        addBackButton(this::backToLevelSelect);
+        addKeyboardShortcuts(null, this::backToLevelSelect);
     }
 
     @Override

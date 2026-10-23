@@ -13,7 +13,6 @@ import com.badlogic.gdx.utils.Array;
  * BOTTOM-left tile and {@code y = ROWS - 1 - row}.
  */
 public class LevelMap {
-
     /**
      * The two plate/gate pairs, A and B. Each pair is independent, which is what lets a level teach the
      * mechanism with one and then set a harder question with the other; a single global "gate open"

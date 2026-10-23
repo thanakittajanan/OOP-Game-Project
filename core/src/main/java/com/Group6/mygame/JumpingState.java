@@ -19,9 +19,9 @@ public class JumpingState implements PlayerState {
         p.moveAndCollide(delta);
 
         if (p.isOnGround()) {
-            p.changeState(p.groundedState);
+            p.toGrounded();
         } else if (p.getVelocity().y <= 0f) {   // top of the jump, or the head hit a ceiling (that sets y speed to 0)
-            p.changeState(p.fallingState);
+            p.toFalling();
         }
     }
 

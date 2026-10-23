@@ -66,6 +66,16 @@ public abstract class BaseScreen implements Screen {
         stage.addActor(background);
     }
 
+    /** Wraps an action as a button listener: {@code button.addListener(onClick(() -> doSomething()))}. */
+    protected static ChangeListener onClick(final Runnable action) {
+        return new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                action.run();
+            }
+        };
+    }
+
     /** Adds a "< Back" button pinned to the top-left corner. */
     protected TextButton addBackButton(final Runnable action) {
         Table bar = new Table();
@@ -75,12 +85,7 @@ public abstract class BaseScreen implements Screen {
         bar.add(backButton).width(180f).height(56f);
         stage.addActor(bar);
 
-        backButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                action.run();
-            }
-        });
+        backButton.addListener(onClick(action));
         return backButton;
     }
 

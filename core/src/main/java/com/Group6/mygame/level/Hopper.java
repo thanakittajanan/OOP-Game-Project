@@ -25,13 +25,13 @@ public class Hopper extends Monster {
 
     @Override
     public void update(float delta) {
-        time += delta;
-        float t = time % CYCLE;
+        advanceTime(delta);
+        float t = getTime() % CYCLE;
         if (t < AIR_TIME) {
-            airHeight = HOP_HEIGHT * (float) Math.sin(Math.PI * t / AIR_TIME);
+            setAirHeight(HOP_HEIGHT * (float) Math.sin(Math.PI * t / AIR_TIME));
             patrol(AIR_SPEED, delta);
         } else {
-            airHeight = 0f;
+            setAirHeight(0f);
             patrol(0f, delta);
         }
     }
@@ -39,7 +39,7 @@ public class Hopper extends Monster {
     @Override
     public void render(SpriteBatch batch) {
         float x = bounds.x, y = bounds.y, w = bounds.width, h = bounds.height;
-        boolean inAir = airHeight > 2f;
+        boolean inAir = getAirHeight() > 2f;
         // legs
         float legSpread = inAir ? 2f : 8f;
         art.draw(batch, art.white, 0.71f, 0.55f, 0.95f, 1f, x + 8f - legSpread, y - (inAir ? 10f : 2f), 5f, 14f);
@@ -48,9 +48,9 @@ public class Hopper extends Monster {
         art.draw(batch, art.circle, 0.11f, 0.06f, 0.19f, 1f, x, y, w, h);
         // antenna
         art.draw(batch, art.white, 0.71f, 0.55f, 0.95f, 1f, x + w / 2f - 1f, y + h - 4f, 3f, 14f);
-        art.draw(batch, art.circle, 0.71f, 0.55f, 0.95f, 1f, x + w / 2f - 4f + direction * 3f, y + h + 8f, 8f, 8f);
+        art.draw(batch, art.circle, 0.71f, 0.55f, 0.95f, 1f, x + w / 2f - 4f + getDirection() * 3f, y + h + 8f, 8f, 8f);
         // eyes
-        float ex = x + w / 2f + direction * 6f;
+        float ex = x + w / 2f + getDirection() * 6f;
         art.draw(batch, art.circle, 1f, 1f, 1f, 1f, ex - 12f, y + h / 2f - 2f, 10f, 10f);
         art.draw(batch, art.circle, 1f, 1f, 1f, 1f, ex + 2f, y + h / 2f - 2f, 10f, 10f);
         drawCommon(batch);

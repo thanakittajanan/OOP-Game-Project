@@ -22,15 +22,16 @@ import com.badlogic.gdx.math.Rectangle;
  */
 public abstract class Monster extends GameObject {
     protected final LevelArt art;
-    protected final float minX, maxX;    // left edge of the hitbox stays between these
     protected final float groundY;       // feet height
     protected final Rectangle cat;       // the cat's hitbox (shared object)
-    protected int direction = -1;        // -1 = left, +1 = right
-    protected float time;
+
+    private final float minX, maxX;      // left edge of the hitbox stays between these
+    private int direction = -1;          // -1 = left, +1 = right
+    private float time;
     /** Height above the ground right now (only Hoppers leave the ground). */
-    protected float airHeight;
+    private float airHeight;
     /** The map, so a ground walker can look at the floor ahead of it. Null if it never needs to. */
-    protected LevelMap map;
+    private final LevelMap map;
     /**
      * True for monsters that walk on their feet and should turn at a ledge rather than step off it.
      *
@@ -38,7 +39,7 @@ public abstract class Monster extends GameObject {
      * it is on the ground, so flipping its direction there would change which way it launches itself -
      * that would quietly re-route the Hoppers already placed in levels 2 and 3.
      */
-    protected boolean edgeAware;
+    private final boolean edgeAware;
 
     private final Rectangle hitbox = new Rectangle();
 
@@ -48,8 +49,21 @@ public abstract class Monster extends GameObject {
      * @param range      patrol distance in each direction from the spawn point, in pixels
      */
     protected Monster(LevelArt art, float centerX, float groundY, float width, float height, float range, Rectangle cat) {
+        this(art, null, false, centerX, groundY, width, height, range, cat);
+    }
+
+    /**
+     * Same as above, for a ground walker that looks at the floor ahead of it.
+     *
+     * @param map       the level, used to find the edge of a platform (may be null)
+     * @param edgeAware true to turn around at a ledge instead of stepping off it
+     */
+    protected Monster(LevelArt art, LevelMap map, boolean edgeAware, float centerX, float groundY,
+                      float width, float height, float range, Rectangle cat) {
         super(centerX - width / 2f, groundY, width, height);
         this.art = art;
+        this.map = map;
+        this.edgeAware = edgeAware;
         this.groundY = groundY;
         this.cat = cat;
         this.minX = centerX - range - width / 2f;
@@ -59,6 +73,34 @@ public abstract class Monster extends GameObject {
 
     /** 1, 2 or 3. */
     public abstract int getTier();
+
+    /** -1 while facing left, +1 while facing right. */
+    protected int getDirection() {
+        return direction;
+    }
+
+    /** Turns to face the cat; the Spitter does this before it fires. */
+    protected void faceCat() {
+        direction = catCenterX() < getCenterX() ? -1 : 1;
+    }
+
+    /** Seconds this monster has been alive (plus a random head start), for animation and timing. */
+    protected float getTime() {
+        return time;
+    }
+
+    protected void advanceTime(float delta) {
+        time += delta;
+    }
+
+    /** Height above the ground right now. */
+    protected float getAirHeight() {
+        return airHeight;
+    }
+
+    protected void setAirHeight(float airHeight) {
+        this.airHeight = airHeight;
+    }
 
     /** Moves along the patrol and turns around at either end, or at the edge of a platform. */
     protected void patrol(float speed, float delta) {

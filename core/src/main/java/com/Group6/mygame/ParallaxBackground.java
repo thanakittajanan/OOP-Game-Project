@@ -7,9 +7,12 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 
-
+/**
+ * A two-layer scrolling background. Each layer slides past more slowly than the gameplay layer (the
+ * far one slowest), which gives the level its sense of depth. A layer repeats forever by mirroring
+ * its image, so the seam between copies never shows. Owns its textures; dispose it with the level.
+ */
 public class ParallaxBackground implements Disposable {
-
     private static final float VIEW_W = Main.WORLD_WIDTH;
     private static final float VIEW_H = Main.WORLD_HEIGHT;
 

@@ -1,15 +1,12 @@
 package com.Group6.mygame;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
-/** Home page: Level_1.jpg */
+/** Home page: the game's wallpaper with Start and Quit buttons. */
 public class MainMenuScreen extends BaseScreen {
-
     public MainMenuScreen(Main game) {
         super(game);
     }
@@ -17,13 +14,11 @@ public class MainMenuScreen extends BaseScreen {
     @Override
     protected void buildUi() {
         Audio.playMenuMusic();
-        addCoverBackground(game.level1Texture);
+        addCoverBackground(game.getMenuBackground());
 
         Table root = new Table();
         root.setFillParent(true);
         root.center().pad(60f);
-
-        //root.add(new Label("Polymorphic Cat", skin, "title")).padBottom(180f).row();
 
         TextButton startButton = new TextButton("Start Game", skin);
         root.add(startButton).width(260f).height(60f).padBottom(24f).row();
@@ -40,32 +35,13 @@ public class MainMenuScreen extends BaseScreen {
         roster.add(new Label("Pete | Shiro | Joseph | Patrik", skin, "roster"));
         stage.addActor(roster);
 
-        startButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                switchTo(new LevelSelectScreen(game));
-            }
-        });
-        quitButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                Gdx.app.exit();
-            }
-        });
+        startButton.addListener(onClick(this::openLevelSelect));
+        quitButton.addListener(onClick(Gdx.app::exit));
 
-        addKeyboardShortcuts(
-            new Runnable() {
-                @Override
-                public void run() {
-                    switchTo(new LevelSelectScreen(game));
-                }
-            },
-            new Runnable() {
-                @Override
-                public void run() {
-                    Gdx.app.exit();
-                }
-            }
-        );
+        addKeyboardShortcuts(this::openLevelSelect, Gdx.app::exit);
+    }
+
+    private void openLevelSelect() {
+        switchTo(new LevelSelectScreen(game));
     }
 }
